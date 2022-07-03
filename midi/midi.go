@@ -14,6 +14,7 @@ func ReadMidiFile(filepath string) (s *smf.SMF, e error) {
 	var err error
 
 	// handle panics
+	// https://github.com/gomidi/midi/issues/20
 	defer func() {
 		if r, ok := recover().(string); ok {
 			e = errors.New(r)
