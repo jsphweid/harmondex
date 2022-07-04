@@ -14,6 +14,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jsphweid/mir1/chord"
+	"github.com/jsphweid/mir1/constants"
 	"github.com/jsphweid/mir1/midi"
 	"github.com/jsphweid/mir1/model"
 	"github.com/spf13/cobra"
@@ -30,20 +31,6 @@ var indexCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		run()
 	},
-}
-
-const ChordSize = 28
-const PreferredChunkSize = 64 * 1024 * 1024
-
-type Chunk struct {
-	Start    string
-	End      string
-	Filename string
-}
-
-type Pair struct {
-	Start uint32
-	End   uint32
 }
 
 func recreateOutputDir() {
@@ -110,7 +97,7 @@ func maybeWriteChord(chord model.Chord) {
 
 	defer f.Close()
 
-	var bytes [ChordSize]byte
+	var bytes [constants.ChordSize]byte
 	copy(bytes[:], notes[:])
 	binary.LittleEndian.PutUint64(bytes[16:24], chord.AbsTime)
 	binary.LittleEndian.PutUint32(bytes[24:28], chord.FileId)
@@ -130,7 +117,7 @@ func getKeysSorted(m map[string][]model.Chord) []string {
 	return keys
 }
 
-func getEncodedMapSize(m map[string]Pair) uint32 {
+func getEncodedMapSize(m map[string]model.Pair) uint32 {
 	buf := new(bytes.Buffer)
 	encoder := gob.NewEncoder(buf)
 	err := encoder.Encode(m)
@@ -140,16 +127,16 @@ func getEncodedMapSize(m map[string]Pair) uint32 {
 	return uint32(len(buf.Bytes()))
 }
 
-func makeChunk(m map[string][]model.Chord, sortedKeys []string) Chunk {
-	var c Chunk
+func makeChunk(m map[string][]model.Chord, sortedKeys []string) model.Chunk {
+	var c model.Chunk
 	c.Filename = uuid.New().String() + ".dat"
 	c.Start = sortedKeys[0]
 	c.End = sortedKeys[len(sortedKeys)-1]
 
 	// fill up index with 0 values
-	index := make(map[string]Pair)
+	index := make(map[string]model.Pair)
 	for _, key := range sortedKeys {
-		var p Pair
+		var p model.Pair
 		index[key] = p
 	}
 	indexSize := getEncodedMapSize(index)
@@ -204,15 +191,15 @@ func makeChunk(m map[string][]model.Chord, sortedKeys []string) Chunk {
 	return c
 }
 
-func maybeMakeChunks(m map[string][]model.Chord, force bool) []Chunk {
+func maybeMakeChunks(m map[string][]model.Chord, force bool) []model.Chunk {
 	var currSize int
 	var currKeys []string
 
 	sortedKeys := getKeysSorted(m)
-	var createdChunks []Chunk
+	var createdChunks []model.Chunk
 
 	for i, key := range sortedKeys {
-		if i != 0 && currSize > PreferredChunkSize && len(currKeys) > 0 {
+		if i != 0 && currSize > constants.PreferredChunkSize && len(currKeys) > 0 {
 			chunk := makeChunk(m, currKeys)
 			createdChunks = append(createdChunks, chunk)
 			currSize = 0
@@ -227,7 +214,7 @@ func maybeMakeChunks(m map[string][]model.Chord, force bool) []Chunk {
 		currSize += len(key) + 4
 	}
 
-	if len(currKeys) > 0 && (currSize > PreferredChunkSize || force) {
+	if len(currKeys) > 0 && (currSize > constants.PreferredChunkSize || force) {
 		chunk := makeChunk(m, currKeys)
 		createdChunks = append(createdChunks, chunk)
 	}
@@ -243,7 +230,7 @@ func makeChunks() {
 	}
 
 	m := make(map[string][]model.Chord)
-	var allChunks []Chunk
+	var allChunks []model.Chunk
 
 	// make chunks
 	for _, file := range files {
@@ -256,15 +243,11 @@ func makeChunks() {
 		r := bufio.NewReader(f)
 
 		for {
-			buf := make([]byte, ChordSize)
+			buf := make([]byte, constants.ChordSize)
 			n, err := r.Read(buf)
 			buf = buf[:n]
 			if n == 0 { // reached end of file?
-				if err != nil {
-					fmt.Println(err)
-					break
-				}
-				if err == io.EOF {
+				if err != nil || err == io.EOF {
 					break
 				}
 			}
@@ -310,7 +293,8 @@ func run() {
 		parsed, err := midi.ReadMidiFile(fullpath)
 
 		if err != nil {
-			fmt.Printf("Skipping %v because error reading with file: %v\n", filename, err)
+			fmt.Printf("Skipping %v because error reading with file: %v\n",
+				filename, err)
 			continue
 		}
 		chords, err := chord.ParseChords(parsed)

@@ -23,7 +23,7 @@ var serverCmd = &cobra.Command{
 }
 
 func loadMainState() {
-	// var chunks []Chunk
+	// var chunks []model.Chunk
 }
 
 func startServer() {
