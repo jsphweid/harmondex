@@ -8,6 +8,22 @@ import (
 	"gitlab.com/gomidi/midi/v2/smf"
 )
 
+type OnNotes = map[uint8]bool
+
+func CreateChordKey(notes []uint8) string {
+	sort.Slice(notes, func(i, j int) bool {
+		return notes[i] < notes[j]
+	})
+	var res string
+	for i, note := range notes {
+		res += fmt.Sprintf("%v", note)
+		if i < len(notes)-1 {
+			res += "-"
+		}
+	}
+	return res
+}
+
 func getChord(pressed map[uint8]int64) model.Chord {
 	var notes []uint8
 	var c model.Chord

@@ -38,21 +38,6 @@ func recreateOutputDir() {
 	os.MkdirAll("out/", 0777)
 }
 
-func makeKey(chord model.Chord) string {
-	notes := chord.Notes
-	sort.Slice(notes, func(i, j int) bool {
-		return notes[i] < notes[j]
-	})
-	var res string
-	for i, note := range notes {
-		res += fmt.Sprintf("%v", note)
-		if i < len(notes)-1 {
-			res += "-"
-		}
-	}
-	return res
-}
-
 func createBinary(filename string, data any) {
 	buf := new(bytes.Buffer)
 	encoder := gob.NewEncoder(buf)
@@ -134,13 +119,12 @@ func makeChunk(m map[string][]model.Chord, sortedKeys []string) model.Chunk {
 	c.End = sortedKeys[len(sortedKeys)-1]
 
 	// fill up index with 0 values
-	index := make(map[string]model.Pair)
+	index := make(model.Index)
 	for _, key := range sortedKeys {
 		var p model.Pair
 		index[key] = p
 	}
-	indexSize := getEncodedMapSize(index)
-	dataOffset := indexSize + 4 // 4 bytes for encoding length of index
+	dataOffset := 0
 
 	// fill up data section
 	dataBuf := new(bytes.Buffer)
@@ -148,19 +132,22 @@ func makeChunk(m map[string][]model.Chord, sortedKeys []string) model.Chunk {
 		chords := m[key]
 		p := index[key]
 		p.Start = uint32(dataOffset)
+		index[key] = p
 		if i > 0 {
 			pp := index[sortedKeys[i-1]]
 			pp.End = uint32(dataOffset)
+			index[sortedKeys[i-1]] = pp
 		}
 		for _, chord := range chords {
-			binary.Write(dataBuf, binary.LittleEndian, chord.FileId)
 			binary.Write(dataBuf, binary.LittleEndian, chord.AbsTime)
+			binary.Write(dataBuf, binary.LittleEndian, chord.FileId)
 			dataOffset += 12
 		}
 	}
 	// set last one
 	p := index[sortedKeys[len(sortedKeys)-1]]
 	p.End = uint32(dataOffset)
+	index[sortedKeys[len(sortedKeys)-1]] = p
 
 	// encode index
 	indexBuf := new(bytes.Buffer)
@@ -171,6 +158,7 @@ func makeChunk(m map[string][]model.Chord, sortedKeys []string) model.Chunk {
 	}
 
 	sizeBuf := new(bytes.Buffer)
+	indexSize := getEncodedMapSize(index)
 	binary.Write(sizeBuf, binary.LittleEndian, indexSize)
 
 	var finalBytes []byte
@@ -189,6 +177,16 @@ func makeChunk(m map[string][]model.Chord, sortedKeys []string) model.Chunk {
 		fmt.Println("Write failed for file: "+filename, err)
 	}
 	return c
+}
+
+func filterZeros(nums []uint8) []uint8 {
+	var res []uint8
+	for _, v := range nums {
+		if v != 0 {
+			res = append(res, v)
+		}
+	}
+	return res
 }
 
 func maybeMakeChunks(m map[string][]model.Chord, force bool) []model.Chunk {
@@ -246,18 +244,19 @@ func makeChunks() {
 			buf := make([]byte, constants.ChordSize)
 			n, err := r.Read(buf)
 			buf = buf[:n]
+			// fmt.Printf("buf: %v\n", buf)
 			if n == 0 { // reached end of file?
 				if err != nil || err == io.EOF {
 					break
 				}
 			}
-			var chord model.Chord
-			chord.Notes = buf[:16]
-			chord.AbsTime = binary.LittleEndian.Uint64(buf[16:24])
-			chord.FileId = binary.LittleEndian.Uint32(buf[24:28])
-			key := makeKey(chord)
+			var c model.Chord
+			c.Notes = filterZeros(buf[:16])
+			c.AbsTime = binary.LittleEndian.Uint64(buf[16:24])
+			c.FileId = binary.LittleEndian.Uint32(buf[24:28])
+			key := chord.CreateChordKey(c.Notes)
 			bucket := m[key]
-			bucket = append(bucket, chord)
+			bucket = append(bucket, c)
 			m[key] = bucket
 		}
 		chunks := maybeMakeChunks(m, false)
@@ -310,7 +309,7 @@ func run() {
 		}
 
 		// TODO: temp
-		if i >= 100 {
+		if i >= 20 {
 			break
 		}
 	}

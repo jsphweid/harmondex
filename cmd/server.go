@@ -1,9 +1,16 @@
 package cmd
 
 import (
+	"bytes"
+	"encoding/binary"
+	"encoding/gob"
 	"fmt"
+	"io"
+	"os"
 	"time"
 
+	"github.com/jsphweid/mir1/chord"
+	"github.com/jsphweid/mir1/model"
 	"github.com/spf13/cobra"
 	"gitlab.com/gomidi/midi/v2"
 	_ "gitlab.com/gomidi/midi/v2/drivers/rtmididrv" // autoregisters driver
@@ -22,8 +29,106 @@ var serverCmd = &cobra.Command{
 	},
 }
 
-func loadMainState() {
-	// var chunks []model.Chunk
+func loadAllChunks() []model.Chunk {
+	f, err := os.Open("out/allChunks.dat")
+	if err != nil {
+		panic("Could not load allChunks file: " + err.Error())
+	}
+	defer f.Close()
+
+	var b []byte
+	_, err = f.Read(b)
+	if err != nil {
+		panic(err)
+	}
+
+	var chunks []model.Chunk
+	decoder := gob.NewDecoder(f)
+	err = decoder.Decode(&chunks)
+	if err != nil {
+		panic("Could not decode allChunks file: " + err.Error())
+	}
+
+	return chunks
+}
+
+func findChordsInChunk(filename string, chordKey string) []model.RawResult {
+	// read chunk
+	f, err := os.Open("out/" + filename)
+	if err != nil {
+		panic("Could not open file: " + err.Error())
+	}
+
+	buf := make([]byte, 4)
+	_, err = io.ReadFull(f, buf)
+	if err != nil {
+		panic("Could not read first 4 bytes: " + err.Error())
+	}
+	indexLength := binary.LittleEndian.Uint32(buf)
+
+	buf = make([]byte, indexLength)
+	_, err = io.ReadFull(f, buf)
+	if err != nil {
+		panic("Could not read first 4 bytes: " + err.Error())
+	}
+
+	var index model.Index
+	// NOTE: seems silly to have to do this
+	decoder := gob.NewDecoder(bytes.NewReader(buf))
+	err = decoder.Decode(&index)
+	if err != nil {
+		panic("Could not decode allChunks file: " + err.Error())
+	}
+	val, ok := index[chordKey]
+	if ok {
+		// advance file byte pointer to start position from current
+		// TODO: add pagination
+		f.Seek(int64(val.Start), os.SEEK_CUR)
+		bytesToRead := val.End - val.Start
+		buf = make([]byte, bytesToRead)
+		_, err = io.ReadFull(f, buf)
+		if err != nil {
+			panic("Could not read from seeked positon: " + err.Error())
+		}
+		return parseResult(buf)
+	}
+
+	var emptyResults []model.RawResult
+	return emptyResults
+}
+
+func parseResult(buf []byte) []model.RawResult {
+	var res []model.RawResult
+	for i := 0; i < len(buf); i += 12 {
+		var rr model.RawResult
+		rr.AbsTime = binary.LittleEndian.Uint64(buf[i : i+8])
+		rr.FileId = binary.LittleEndian.Uint32(buf[i+8 : i+12])
+		res = append(res, rr)
+	}
+	return res
+}
+
+func findChords(allChunks []model.Chunk, onNotes chord.OnNotes) {
+	if len(onNotes) == 0 {
+		return
+	}
+
+	// TODO: return something
+	keys := make([]uint8, 0, len(onNotes))
+	for k := range onNotes {
+		keys = append(keys, k)
+	}
+	chordKey := chord.CreateChordKey(keys)
+	for _, chunk := range allChunks {
+		if chordKey >= chunk.Start && chordKey <= chunk.End {
+			res := findChordsInChunk(chunk.Filename, chordKey)
+			fmt.Printf("res!!!!!: %v\n", res)
+			return // TODO
+		}
+	}
+
+	// TODO
+	// fmt.Printf("Could not find a chord for: %v\n", onNotes)
 }
 
 func startServer() {
@@ -34,9 +139,9 @@ func startServer() {
 		return
 	}
 
-	loadMainState()
+	allChunks := loadAllChunks()
+	onNotes := make(chord.OnNotes)
 
-	// load our main state
 	// manage current midi notes
 	// retrieve
 	// concurrency, also, debounce
@@ -48,9 +153,11 @@ func startServer() {
 		case msg.GetSysEx(&bt):
 			fmt.Printf("got sysex: % X\n", bt)
 		case msg.GetNoteStart(&ch, &key, &vel):
-			fmt.Printf("starting note %s on channel %v with velocity %v\n", midi.Note(key), ch, vel)
+			onNotes[key] = true
+			findChords(allChunks, onNotes)
 		case msg.GetNoteEnd(&ch, &key):
-			fmt.Printf("ending note %s on channel %v\n", midi.Note(key), ch)
+			delete(onNotes, key)
+			findChords(allChunks, onNotes)
 		default:
 			// ignore
 		}
