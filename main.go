@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/jsphweid/mir1/cmd"
+	"github.com/jsphweid/harmondex/cmd"
 )
 
 func main() {

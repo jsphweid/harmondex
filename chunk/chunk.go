@@ -9,10 +9,10 @@ import (
 	"sort"
 
 	"github.com/google/uuid"
-	"github.com/jsphweid/mir1/bucket"
-	"github.com/jsphweid/mir1/chord"
-	"github.com/jsphweid/mir1/constants"
-	"github.com/jsphweid/mir1/model"
+	"github.com/jsphweid/harmondex/bucket"
+	"github.com/jsphweid/harmondex/chord"
+	"github.com/jsphweid/harmondex/constants"
+	"github.com/jsphweid/harmondex/model"
 )
 
 type ChordKeyToChords = map[string][]model.Chord

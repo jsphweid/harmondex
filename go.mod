@@ -1,4 +1,4 @@
-module github.com/jsphweid/mir1
+module github.com/jsphweid/harmondex
 
 go 1.18
 

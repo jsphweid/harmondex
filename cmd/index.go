@@ -1,11 +1,11 @@
 package cmd
 
 import (
-	"github.com/jsphweid/mir1/bucket"
-	"github.com/jsphweid/mir1/chunk"
-	"github.com/jsphweid/mir1/constants"
-	"github.com/jsphweid/mir1/model"
-	"github.com/jsphweid/mir1/util"
+	"github.com/jsphweid/harmondex/bucket"
+	"github.com/jsphweid/harmondex/chunk"
+	"github.com/jsphweid/harmondex/constants"
+	"github.com/jsphweid/harmondex/model"
+	"github.com/jsphweid/harmondex/util"
 	"github.com/spf13/cobra"
 )
 

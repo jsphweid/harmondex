@@ -1,15 +1,15 @@
-# mir1
+# harmondex
 
 You will need a folder in root dir called "lmd_full" that has all the lakh midi data.
 
 `go install`
-`mir1 index`
+`harmondex index`
 
 ### running the server
 
 You'll need FluidSynth installed. Then run it with a soundfont that you like.
 `fluidsynth /path/to/somefont.sf2`
-`mir1 server`
+`harmondex server`
 
 ### terminology
 bucket - bin to put similar data in

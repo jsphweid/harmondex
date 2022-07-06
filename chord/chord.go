@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"sort"
 
-	"github.com/jsphweid/mir1/model"
+	"github.com/jsphweid/harmondex/model"
 	"gitlab.com/gomidi/midi/v2/smf"
 )
 

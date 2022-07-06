@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/bep/debounce"
-	"github.com/jsphweid/mir1/chord"
+	"github.com/jsphweid/harmondex/chord"
 	"github.com/spf13/cobra"
 	"gitlab.com/gomidi/midi/v2"
 	_ "gitlab.com/gomidi/midi/v2/drivers/rtmididrv" // autoregisters driver

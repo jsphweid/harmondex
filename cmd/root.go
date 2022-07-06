@@ -5,7 +5,7 @@ import (
 )
 
 var rootCmd = &cobra.Command{
-	Use:   "mir1",
+	Use:   "harmondex",
 	Short: "MIR project 1",
 	Long:  `MIR project 1... I'll come up with a better name later.`,
 }

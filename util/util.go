@@ -9,7 +9,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/jsphweid/mir1/constants"
+	"github.com/jsphweid/harmondex/constants"
 	"golang.org/x/exp/constraints"
 )
 

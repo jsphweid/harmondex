@@ -10,11 +10,11 @@ import (
 	"regexp"
 	"sort"
 
-	"github.com/jsphweid/mir1/chord"
-	"github.com/jsphweid/mir1/constants"
-	"github.com/jsphweid/mir1/midi"
-	"github.com/jsphweid/mir1/model"
-	"github.com/jsphweid/mir1/util"
+	"github.com/jsphweid/harmondex/chord"
+	"github.com/jsphweid/harmondex/constants"
+	"github.com/jsphweid/harmondex/midi"
+	"github.com/jsphweid/harmondex/model"
+	"github.com/jsphweid/harmondex/util"
 )
 
 func maybePutChordInBuckets(chord model.Chord) {
