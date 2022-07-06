@@ -21,3 +21,5 @@ file number - number that identifies an original midi file
 # TODO
  - [ ] come up with better name
  - [ ] use uint32 for tick offset instead of 64??
+ - [ ] profile everything in indexing and see what can be improved
+ - [ ] use map
