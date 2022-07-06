@@ -24,18 +24,18 @@ func CreateChordKey(notes []uint8) string {
 	return res
 }
 
-func getChord(pressed map[uint8]int64) model.Chord {
+func getChord(pressed map[uint8]uint64) model.Chord {
 	var notes []uint8
 	var c model.Chord
 	for note := range pressed {
 		notes = append(notes, note)
-		c.AbsTime = uint64(pressed[note])
+		c.TicksOffset = uint64(pressed[note])
 	}
 	c.Notes = notes
 	return c
 }
 
-func ParseChords(s *smf.SMF) ([]model.Chord, error) {
+func GetChords(s *smf.SMF) ([]model.Chord, error) {
 
 	// TODO: investigate
 	defer func() {
@@ -52,44 +52,43 @@ func ParseChords(s *smf.SMF) ([]model.Chord, error) {
 		var absTicks uint64
 		for _, event := range events {
 			absTicks += uint64(event.Delta)
-			absTime := s.TimeAt(int64(absTicks))
 			var channel uint8
 			var key uint8
 			var velocity uint8
 			switch {
 			case event.Message.GetNoteOn(&channel, &key, &velocity):
 				rEvent := model.ReducedEvent{
-					AbsTime:   absTime,
-					IsNoteOff: false,
-					Note:      key,
+					TicksOffset: absTicks,
+					IsNoteOff:   false,
+					Note:        key,
 				}
 				reducedEvents = append(reducedEvents, rEvent)
 			case event.Message.GetNoteOff(&channel, &key, &velocity):
 				rEvent := model.ReducedEvent{
-					AbsTime:   absTime,
-					IsNoteOff: true,
-					Note:      key,
+					TicksOffset: absTicks,
+					IsNoteOff:   true,
+					Note:        key,
 				}
 				reducedEvents = append(reducedEvents, rEvent)
 			}
 		}
 	}
 	sort.Slice(reducedEvents, func(i, j int) bool {
-		if reducedEvents[i].AbsTime != reducedEvents[j].AbsTime {
-			return reducedEvents[i].AbsTime < reducedEvents[j].AbsTime
+		if reducedEvents[i].TicksOffset != reducedEvents[j].TicksOffset {
+			return reducedEvents[i].TicksOffset < reducedEvents[j].TicksOffset
 		}
 		return reducedEvents[i].IsNoteOff
 	})
 
-	timestampToChords := make(map[int64]model.Chord)
-	pressed := make(map[uint8]int64)
+	timestampToChords := make(map[uint64]model.Chord)
+	pressed := make(map[uint8]uint64)
 	for _, evt := range reducedEvents {
 		if evt.IsNoteOff {
 			delete(pressed, evt.Note)
-			timestampToChords[evt.AbsTime] = getChord(pressed)
+			timestampToChords[evt.TicksOffset] = getChord(pressed)
 		} else {
-			pressed[evt.Note] = evt.AbsTime
-			timestampToChords[evt.AbsTime] = getChord(pressed)
+			pressed[evt.Note] = evt.TicksOffset
+			timestampToChords[evt.TicksOffset] = getChord(pressed)
 		}
 	}
 

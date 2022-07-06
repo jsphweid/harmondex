@@ -1,7 +1,11 @@
 package model
 
-type Chunk struct {
+type ChunkOverview struct {
 	Start    string
 	End      string
 	Filename string
 }
+
+type ChunkIndex = map[string]Pair
+type ChunkNum = uint32
+type ChunkNumToFilename = map[ChunkNum]string
