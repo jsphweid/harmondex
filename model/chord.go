@@ -1,7 +1,9 @@
 package model
 
+type Notes = []uint8
+
 type Chord struct {
 	TicksOffset uint64
-	Notes       []uint8
+	Notes       Notes
 	FileNum     uint32
 }
