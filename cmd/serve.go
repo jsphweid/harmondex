@@ -11,16 +11,19 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strconv"
 
 	"github.com/gorilla/mux"
 	"github.com/jsphweid/harmondex/chord"
 	"github.com/jsphweid/harmondex/constants"
 	"github.com/jsphweid/harmondex/model"
+	"github.com/jsphweid/harmondex/util"
 	"github.com/spf13/cobra"
 	_ "gitlab.com/gomidi/midi/v2/drivers/rtmididrv" // autoregisters driver
 )
 
 var allChunks []model.ChunkOverview
+var fileNumMap model.FileNumToMidiPath
 
 func init() {
 	rootCmd.AddCommand(serveCmd)
@@ -33,29 +36,6 @@ var serveCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		serve()
 	},
-}
-
-func loadAllChunks() []model.ChunkOverview {
-	f, err := os.Open(constants.OutDir + "/allChunks.dat")
-	if err != nil {
-		panic("Could not load allChunks file: " + err.Error())
-	}
-	defer f.Close()
-
-	var b []byte
-	_, err = f.Read(b)
-	if err != nil {
-		panic(err)
-	}
-
-	var chunks []model.ChunkOverview
-	decoder := gob.NewDecoder(f)
-	err = decoder.Decode(&chunks)
-	if err != nil {
-		panic("Could not decode allChunks file: " + err.Error())
-	}
-
-	return chunks
 }
 
 func parseResult(buf []byte) []model.RawResult {
@@ -131,6 +111,30 @@ func findChords(notes model.Notes) []model.RawResult {
 	return empty
 }
 
+func matchesToResults(matches []model.RawResult) []model.SearchResult {
+	res := make([]model.SearchResult, 0)
+	for _, rr := range matches {
+		res = append(res, model.SearchResult{FileId: rr.FileId, TicksOffset: rr.TicksOffset})
+	}
+	return res
+}
+
+func handleGetFile(w http.ResponseWriter, r *http.Request) {
+	id := mux.Vars(r)["id"]
+	fileNum, err := strconv.Atoi(id)
+	if err != nil {
+		return
+	}
+	if filepath, ok := fileNumMap[uint32(fileNum)]; ok {
+		bytes, err := ioutil.ReadFile(filepath)
+		if err != nil {
+			fmt.Println("Error reading midi file: " + err.Error())
+			return
+		}
+		w.Write(bytes)
+	}
+}
+
 func handleSearch(w http.ResponseWriter, r *http.Request) {
 	reqBody, err := ioutil.ReadAll(r.Body)
 	if err != nil {
@@ -150,18 +154,21 @@ func handleSearch(w http.ResponseWriter, r *http.Request) {
 	}
 
 	matches := findChords(input.Chords[0])
+	json.NewEncoder(w).Encode(matchesToResults(matches)[:10])
+}
 
-	res := make([]model.SearchResult, 0)
-	for _, rr := range matches {
-		res = append(res, model.SearchResult{FileId: rr.FileId, TicksOffset: rr.TicksOffset})
-	}
-	json.NewEncoder(w).Encode(res)
+func UnauthorizedHandler(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(401)
+	fmt.Fprintf(w, "401 Unauthorized\n")
 }
 
 func serve() {
-	allChunks = loadAllChunks()
+	allChunks = util.ReadBinaryOrPanic[[]model.ChunkOverview](constants.OutDir + "/allChunks.dat")
+	fileNumMap = util.ReadBinaryOrPanic[model.FileNumToMidiPath](constants.OutDir + "/indexToPath.dat")
 
-	router := mux.NewRouter().StrictSlash(true)
+	router := mux.NewRouter()
 	router.HandleFunc("/search", handleSearch).Methods("POST")
+	router.HandleFunc("/file/{id}", handleGetFile).Methods("GET")
+
 	log.Fatal(http.ListenAndServe(":8080", router))
 }

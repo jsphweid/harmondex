@@ -87,3 +87,26 @@ func FilterZeros[A constraints.Integer](nums []A) []A {
 	}
 	return res
 }
+
+func ReadBinaryOrPanic[A any](path string) A {
+	f, err := os.Open(path)
+	if err != nil {
+		panic("Could not load binary file: " + err.Error())
+	}
+	defer f.Close()
+
+	var b []byte
+	_, err = f.Read(b)
+	if err != nil {
+		panic("Could not read binary file: " + err.Error())
+	}
+
+	var data A
+	decoder := gob.NewDecoder(f)
+	err = decoder.Decode(&data)
+	if err != nil {
+		panic("Could not decode binary file: " + err.Error())
+	}
+
+	return data
+}
