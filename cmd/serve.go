@@ -18,6 +18,7 @@ import (
 	"github.com/jsphweid/harmondex/constants"
 	"github.com/jsphweid/harmondex/model"
 	"github.com/jsphweid/harmondex/util"
+	"github.com/rs/cors"
 	"github.com/spf13/cobra"
 	_ "gitlab.com/gomidi/midi/v2/drivers/rtmididrv" // autoregisters driver
 )
@@ -154,7 +155,8 @@ func handleSearch(w http.ResponseWriter, r *http.Request) {
 	}
 
 	matches := findChords(input.Chords[0])
-	json.NewEncoder(w).Encode(matchesToResults(matches)[:10])
+	max_matches := util.Min(len(matches), 10)
+	json.NewEncoder(w).Encode(matchesToResults(matches)[:max_matches])
 }
 
 func UnauthorizedHandler(w http.ResponseWriter, r *http.Request) {
@@ -170,5 +172,12 @@ func serve() {
 	router.HandleFunc("/search", handleSearch).Methods("POST")
 	router.HandleFunc("/file/{id}", handleGetFile).Methods("GET")
 
-	log.Fatal(http.ListenAndServe(":8080", router))
+	c := cors.New(cors.Options{
+		AllowedOrigins:   []string{"http://localhost:8000"},
+		AllowCredentials: true,
+	})
+
+	handler := c.Handler(router)
+
+	log.Fatal(http.ListenAndServe(":8080", handler))
 }

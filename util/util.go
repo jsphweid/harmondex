@@ -110,3 +110,10 @@ func ReadBinaryOrPanic[A any](path string) A {
 
 	return data
 }
+
+func Min[A constraints.Integer](num1 A, num2 A) A {
+	if num1 > num2 {
+		return num2
+	}
+	return num1
+}

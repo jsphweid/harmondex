@@ -12,6 +12,7 @@ require (
 	github.com/bep/debounce v1.2.1
 	github.com/gorilla/mux v1.8.0
 	github.com/inconshreveable/mousetrap v1.0.0 // indirect
+	github.com/rs/cors v1.8.2
 	github.com/spf13/pflag v1.0.5 // indirect
 	golang.org/x/exp v0.0.0-20220613132600-b0d781184e0d
 )
