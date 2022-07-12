@@ -1,6 +1,6 @@
 package model
 
 type RawResult struct {
-	TicksOffset uint64
-	FileId      uint32
+	Offset uint32 // millis
+	FileId uint32
 }

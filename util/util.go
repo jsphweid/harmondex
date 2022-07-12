@@ -70,10 +70,10 @@ func CreateBinary(filename string, data any) {
 	}
 }
 
-func ReadFileOrPanic(path string) *os.File {
+func OpenFileOrPanic(path string) *os.File {
 	f, err := os.Open(path)
 	if err != nil {
-		panic("Couldn't read big file: " + err.Error())
+		panic("Couldn't read file: " + err.Error())
 	}
 	return f
 }
@@ -116,4 +116,12 @@ func Min[A constraints.Integer](num1 A, num2 A) A {
 		return num2
 	}
 	return num1
+}
+
+func Sum[A constraints.Integer](nums []A) uint64 {
+	var total uint64
+	for _, v := range nums {
+		total += uint64(v)
+	}
+	return total
 }

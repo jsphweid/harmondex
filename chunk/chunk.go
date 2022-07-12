@@ -5,7 +5,9 @@ import (
 	"encoding/binary"
 	"encoding/gob"
 	"fmt"
+	"io"
 	"io/ioutil"
+	"os"
 	"sort"
 
 	"github.com/google/uuid"
@@ -66,9 +68,9 @@ func makeChunk(m ChordKeyToChords, sortedKeys []string) model.ChunkOverview {
 			chunkIndex[sortedKeys[i-1]] = pp
 		}
 		for _, chord := range chords {
-			binary.Write(dataBuf, binary.LittleEndian, chord.TicksOffset)
+			binary.Write(dataBuf, binary.LittleEndian, chord.Offset)
 			binary.Write(dataBuf, binary.LittleEndian, chord.FileNum)
-			dataOffset += 12
+			dataOffset += 8
 		}
 	}
 	// set End on the last sortedKey in chunkIndex
@@ -115,9 +117,9 @@ func maybeMakeChunks(m ChordKeyToChords, force bool) []model.ChunkOverview {
 		currKeys = append(currKeys, key)
 		chords := m[key]
 
-		// each chord will take up uint32 and uint64 == 12 bytes
-		size += len(chords) * 12
-		// each index will take up some vari length + uint32 == 28 bytes
+		// each chord will take up uint32 and uint32 == 8 bytes
+		size += len(chords) * 8
+		// each index will take up some vari length + uint32 == 28 bytes?
 		// NOTE: note completely accurate because we're encoding a map when we write
 		size += len(key) + 4
 
@@ -126,6 +128,9 @@ func maybeMakeChunks(m ChordKeyToChords, force bool) []model.ChunkOverview {
 			chunk := makeChunk(m, currKeys)
 			createdChunks = append(createdChunks, chunk)
 			size = 0
+			for _, cKey := range currKeys {
+				delete(m, cKey)
+			}
 			currKeys = currKeys[:0]
 		}
 	}
@@ -168,4 +173,30 @@ func CreateAll() []model.ChunkOverview {
 	}
 
 	return res
+}
+
+func ReadIndexOrPanic(f *os.File) (model.ChunkIndex, uint32) {
+	// reads the index and returns it, advancing file to end of index point
+
+	buf := make([]byte, 4)
+	_, err := io.ReadFull(f, buf)
+	if err != nil {
+		panic("Could not read first 4 bytes: " + err.Error())
+	}
+	indexLength := binary.LittleEndian.Uint32(buf)
+
+	buf = make([]byte, indexLength)
+	_, err = io.ReadFull(f, buf)
+	if err != nil {
+		panic("Could not read first 4 bytes: " + err.Error())
+	}
+
+	var index model.ChunkIndex
+	// NOTE: seems silly to have to do this
+	decoder := gob.NewDecoder(bytes.NewReader(buf))
+	err = decoder.Decode(&index)
+	if err != nil {
+		panic("Could not decode allChunks file: " + err.Error())
+	}
+	return index, indexLength
 }

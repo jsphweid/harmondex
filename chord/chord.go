@@ -24,12 +24,18 @@ func CreateChordKey(notes []uint8) string {
 	return res
 }
 
-func getChord(pressed map[uint8]uint64) model.Chord {
+func getChord(pressed map[uint8]int64) model.Chord {
 	var notes []uint8
 	var c model.Chord
 	for note := range pressed {
 		notes = append(notes, note)
-		c.TicksOffset = uint64(pressed[note])
+
+		// storing it in millis for space savings (32 vs. 64)
+		// millis is accurate enough. And if we used microseconds for 32
+		// max offset would be around 1.2 hours... there could reasonably
+		// be midi files that long. Millis gives us 1200 hours max length
+		// which is obviously totally sufficient
+		c.Offset = uint32(pressed[note] / 1000)
 	}
 	c.Notes = notes
 	return c
@@ -49,46 +55,49 @@ func GetChords(s *smf.SMF) ([]model.Chord, error) {
 	var reducedEvents []model.ReducedEvent
 
 	for _, events := range s.Tracks {
-		var absTicks uint64
+		var absTicks int64
 		for _, event := range events {
-			absTicks += uint64(event.Delta)
+			absTicks += int64(event.Delta)
+			absTime := s.TimeAt(absTicks)
 			var channel uint8
 			var key uint8
 			var velocity uint8
 			switch {
 			case event.Message.GetNoteOn(&channel, &key, &velocity):
 				rEvent := model.ReducedEvent{
-					TicksOffset: absTicks,
-					IsNoteOff:   false,
-					Note:        key,
+					Offset:    absTime,
+					IsNoteOff: false,
+					Note:      key,
 				}
 				reducedEvents = append(reducedEvents, rEvent)
 			case event.Message.GetNoteOff(&channel, &key, &velocity):
 				rEvent := model.ReducedEvent{
-					TicksOffset: absTicks,
-					IsNoteOff:   true,
-					Note:        key,
+					Offset:    absTime,
+					IsNoteOff: true,
+					Note:      key,
 				}
 				reducedEvents = append(reducedEvents, rEvent)
 			}
 		}
 	}
+
+	// prioritize smaller offset values then note off
 	sort.Slice(reducedEvents, func(i, j int) bool {
-		if reducedEvents[i].TicksOffset != reducedEvents[j].TicksOffset {
-			return reducedEvents[i].TicksOffset < reducedEvents[j].TicksOffset
+		if reducedEvents[i].Offset != reducedEvents[j].Offset {
+			return reducedEvents[i].Offset < reducedEvents[j].Offset
 		}
 		return reducedEvents[i].IsNoteOff
 	})
 
-	timestampToChords := make(map[uint64]model.Chord)
-	pressed := make(map[uint8]uint64)
+	timestampToChords := make(map[int64]model.Chord)
+	pressed := make(map[uint8]int64)
 	for _, evt := range reducedEvents {
 		if evt.IsNoteOff {
 			delete(pressed, evt.Note)
-			timestampToChords[evt.TicksOffset] = getChord(pressed)
+			timestampToChords[evt.Offset] = getChord(pressed)
 		} else {
-			pressed[evt.Note] = evt.TicksOffset
-			timestampToChords[evt.TicksOffset] = getChord(pressed)
+			pressed[evt.Note] = evt.Offset
+			timestampToChords[evt.Offset] = getChord(pressed)
 		}
 	}
 

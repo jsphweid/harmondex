@@ -1,9 +1,7 @@
 package cmd
 
 import (
-	"bytes"
 	"encoding/binary"
-	"encoding/gob"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -15,6 +13,7 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/jsphweid/harmondex/chord"
+	"github.com/jsphweid/harmondex/chunk"
 	"github.com/jsphweid/harmondex/constants"
 	"github.com/jsphweid/harmondex/model"
 	"github.com/jsphweid/harmondex/util"
@@ -41,10 +40,10 @@ var serveCmd = &cobra.Command{
 
 func parseResult(buf []byte) []model.RawResult {
 	var res []model.RawResult
-	for i := 0; i < len(buf); i += 12 {
+	for i := 0; i < len(buf); i += 8 {
 		var rr model.RawResult
-		rr.TicksOffset = binary.LittleEndian.Uint64(buf[i : i+8])
-		rr.FileId = binary.LittleEndian.Uint32(buf[i+8 : i+12])
+		rr.Offset = binary.LittleEndian.Uint32(buf[i : i+4])
+		rr.FileId = binary.LittleEndian.Uint32(buf[i+4 : i+8])
 		res = append(res, rr)
 	}
 	return res
@@ -52,39 +51,17 @@ func parseResult(buf []byte) []model.RawResult {
 
 func findChordsInChunk(filename string, chordKey string) []model.RawResult {
 	// read chunk
-	f, err := os.Open("out/" + filename)
-	if err != nil {
-		panic("Could not open file: " + err.Error())
-	}
+	f := util.OpenFileOrPanic(constants.OutDir + "/" + filename)
+	index, _ := chunk.ReadIndexOrPanic(f)
 
-	buf := make([]byte, 4)
-	_, err = io.ReadFull(f, buf)
-	if err != nil {
-		panic("Could not read first 4 bytes: " + err.Error())
-	}
-	indexLength := binary.LittleEndian.Uint32(buf)
-
-	buf = make([]byte, indexLength)
-	_, err = io.ReadFull(f, buf)
-	if err != nil {
-		panic("Could not read first 4 bytes: " + err.Error())
-	}
-
-	var index model.ChunkIndex
-	// NOTE: seems silly to have to do this
-	decoder := gob.NewDecoder(bytes.NewReader(buf))
-	err = decoder.Decode(&index)
-	if err != nil {
-		panic("Could not decode allChunks file: " + err.Error())
-	}
 	val, ok := index[chordKey]
 	if ok {
 		// advance file byte pointer to start position from current
 		// TODO: add pagination
 		f.Seek(int64(val.Start), os.SEEK_CUR)
 		bytesToRead := val.End - val.Start
-		buf = make([]byte, bytesToRead)
-		_, err = io.ReadFull(f, buf)
+		buf := make([]byte, bytesToRead)
+		_, err := io.ReadFull(f, buf)
 		if err != nil {
 			panic("Could not read from seeked positon: " + err.Error())
 		}
@@ -115,7 +92,11 @@ func findChords(notes model.Notes) []model.RawResult {
 func matchesToResults(matches []model.RawResult) []model.SearchResult {
 	res := make([]model.SearchResult, 0)
 	for _, rr := range matches {
-		res = append(res, model.SearchResult{FileId: rr.FileId, TicksOffset: rr.TicksOffset})
+		searchResult := model.SearchResult{
+			FileId: rr.FileId,
+			Offset: float32(rr.Offset) / 1000, // convert to seconds because it's clearer
+		}
+		res = append(res, searchResult)
 	}
 	return res
 }

@@ -44,14 +44,14 @@ func maybePutChordInBuckets(chord model.Chord) {
 	// TODO: create easy mechanism for reading/writing chord
 	var bytes [constants.ChordSize]byte
 	copy(bytes[:], notes[:])
-	binary.LittleEndian.PutUint64(bytes[16:24], chord.TicksOffset)
-	binary.LittleEndian.PutUint32(bytes[24:28], chord.FileNum)
+	binary.LittleEndian.PutUint32(bytes[16:20], chord.Offset)
+	binary.LittleEndian.PutUint32(bytes[20:24], chord.FileNum)
 	if _, err = f.Write(bytes[:]); err != nil {
 		panic("Could not write chord to bucket because: " + err.Error())
 	}
 }
 
-func processMidiFile(i uint32, path string) {
+func processMidiFile(fileNum uint32, path string) {
 	parsed, err := midi.ReadMidiFile(path)
 	if err != nil {
 		fmt.Printf("Skipping %v because: %v\n", path, err)
@@ -65,7 +65,7 @@ func processMidiFile(i uint32, path string) {
 	}
 
 	for _, chord := range chords {
-		chord.FileNum = uint32(i)
+		chord.FileNum = uint32(fileNum)
 		maybePutChordInBuckets(chord)
 	}
 }
@@ -95,7 +95,7 @@ func DeleteAll() {
 
 func ReadChords(path string) []model.Chord {
 	var res []model.Chord
-	bucketFile := util.ReadFileOrPanic(path)
+	bucketFile := util.OpenFileOrPanic(path)
 	bucketReader := bufio.NewReader(bucketFile)
 	for {
 		buf := make([]byte, constants.ChordSize)
@@ -111,8 +111,8 @@ func ReadChords(path string) []model.Chord {
 
 		var c model.Chord
 		c.Notes = util.FilterZeros(buf[:16])
-		c.TicksOffset = binary.LittleEndian.Uint64(buf[16:24])
-		c.FileNum = binary.LittleEndian.Uint32(buf[24:28])
+		c.Offset = binary.LittleEndian.Uint32(buf[16:20])
+		c.FileNum = binary.LittleEndian.Uint32(buf[20:24])
 		res = append(res, c)
 	}
 	return res

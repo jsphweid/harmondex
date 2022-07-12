@@ -1,8 +1,8 @@
 package model
 
 type SearchResult struct {
-	FileId      uint32 `json:"file_id"`
-	TicksOffset uint64 `json:"ticks_offset"`
+	FileId uint32  `json:"file_id"`
+	Offset float32 `json:"offset"`
 }
 
 type SearchRequestBody struct {

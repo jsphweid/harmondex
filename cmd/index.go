@@ -30,5 +30,5 @@ func run() {
 	chunks := chunk.CreateAll()
 	util.CreateBinary(constants.OutDir+"/allChunks.dat", chunks)
 	util.CreateBinary(constants.OutDir+"/indexToPath.dat", fileNumMap)
-	bucket.DeleteAll()
+	// bucket.DeleteAll()
 }

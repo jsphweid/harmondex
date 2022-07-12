@@ -7,7 +7,8 @@ import (
 func CreateFileNumMap(paths []string) model.FileNumToMidiPath {
 	res := make(model.FileNumToMidiPath)
 	for i, v := range paths {
-		res[uint32(i)] = v
+		// i + 1 to avoid a fileId == 0
+		res[uint32(i+1)] = v
 	}
 	return res
 }
