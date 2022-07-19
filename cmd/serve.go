@@ -10,16 +10,17 @@ import (
 	"net/http"
 	"os"
 	"strconv"
+	"strings"
 
 	"github.com/gorilla/mux"
 	"github.com/jsphweid/harmondex/chord"
 	"github.com/jsphweid/harmondex/chunk"
 	"github.com/jsphweid/harmondex/constants"
+	"github.com/jsphweid/harmondex/db"
 	"github.com/jsphweid/harmondex/model"
 	"github.com/jsphweid/harmondex/util"
 	"github.com/rs/cors"
 	"github.com/spf13/cobra"
-	_ "gitlab.com/gomidi/midi/v2/drivers/rtmididrv" // autoregisters driver
 )
 
 var allChunks []model.ChunkOverview
@@ -34,7 +35,11 @@ var serveCmd = &cobra.Command{
 	Short: "serves",
 	Long:  `serves`,
 	Run: func(cmd *cobra.Command, args []string) {
-		serve()
+		if len(args) != 1 {
+			panic("Need at least 1 arg... the path to the content folder")
+		}
+
+		serve(args[0])
 	},
 }
 
@@ -91,12 +96,35 @@ func findChords(notes model.Notes) []model.RawResult {
 
 func matchesToResults(matches []model.RawResult) []model.SearchResult {
 	res := make([]model.SearchResult, 0)
+	fileIdToMetadata := fetchMidiMetadata(matches)
 	for _, rr := range matches {
 		searchResult := model.SearchResult{
-			FileId: rr.FileId,
-			Offset: float32(rr.Offset) / 1000, // convert to seconds because it's clearer
+			FileId:       rr.FileId,
+			Offset:       float32(rr.Offset) / 1000, // convert to seconds because it's clearer
+			MidiMetadata: fileIdToMetadata[rr.FileId],
 		}
 		res = append(res, searchResult)
+	}
+	return res
+}
+
+func fetchMidiMetadata(matches []model.RawResult) map[uint32]*model.MidiMetadata {
+	res := make(map[uint32]*model.MidiMetadata)
+	uniqueFileIds := make(map[uint32]bool)
+	for _, rr := range matches {
+		uniqueFileIds[rr.FileId] = true
+	}
+	fileIds := util.GetKeys(uniqueFileIds)
+	var filenames []string
+	filenameToFileId := make(map[string]uint32)
+	for _, fileId := range fileIds {
+		splittedPath := strings.Split(fileNumMap[fileId], "/")
+		filename := splittedPath[len(splittedPath)-1]
+		filenames = append(filenames, filename)
+		filenameToFileId[filename] = fileId
+	}
+	for filename, metadata := range db.GetMidiMetadatas(filenames) {
+		res[filenameToFileId[filename]] = &metadata
 	}
 	return res
 }
@@ -108,6 +136,7 @@ func handleGetFile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if filepath, ok := fileNumMap[uint32(fileNum)]; ok {
+		fmt.Printf("filepath: %v\n", filepath)
 		bytes, err := ioutil.ReadFile(filepath)
 		if err != nil {
 			fmt.Println("Error reading midi file: " + err.Error())
@@ -137,7 +166,7 @@ func handleSearch(w http.ResponseWriter, r *http.Request) {
 
 	matches := findChords(input.Chords[0])
 	max_matches := util.Min(len(matches), 10)
-	json.NewEncoder(w).Encode(matchesToResults(matches)[:max_matches])
+	json.NewEncoder(w).Encode(matchesToResults(matches[:max_matches]))
 }
 
 func UnauthorizedHandler(w http.ResponseWriter, r *http.Request) {
@@ -145,7 +174,7 @@ func UnauthorizedHandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, "401 Unauthorized\n")
 }
 
-func serve() {
+func serve(contentPath string) {
 	allChunks = util.ReadBinaryOrPanic[[]model.ChunkOverview](constants.OutDir + "/allChunks.dat")
 	fileNumMap = util.ReadBinaryOrPanic[model.FileNumToMidiPath](constants.OutDir + "/indexToPath.dat")
 
@@ -154,7 +183,7 @@ func serve() {
 	router.HandleFunc("/file/{id}", handleGetFile).Methods("GET")
 
 	c := cors.New(cors.Options{
-		AllowedOrigins:   []string{"http://localhost:8000"},
+		AllowedOrigins:   []string{"http://localhost:3500"},
 		AllowCredentials: true,
 	})
 

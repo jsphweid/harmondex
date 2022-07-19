@@ -1,9 +1,8 @@
 # harmondex
 
-You will need a folder in root dir called "lmd_full" that has all the lakh midi data.
-
 `go install`
-`harmondex index`
+`harmondex index path/to/src/files`
+`harmondex serve path/to/src/files`
 
 ### running the server
 

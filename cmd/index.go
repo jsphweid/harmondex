@@ -18,13 +18,17 @@ var indexCmd = &cobra.Command{
 	Short: "Creates index",
 	Long:  `Creates index`,
 	Run: func(cmd *cobra.Command, args []string) {
-		run()
+		if len(args) != 1 {
+			panic("Need at least 1 arg... the path to the content folder")
+		}
+
+		run(args[0])
 	},
 }
 
-func run() {
+func run(contentPath string) {
 	util.RecreateOutputDir()
-	paths := util.GatherAllMidiPaths("lmd_full")
+	paths := util.GatherAllMidiPaths(contentPath)
 	fileNumMap := file.CreateFileNumMap(paths[:10000]) // NOTE: temp
 	bucket.ProcessAllMidiFiles(fileNumMap)
 	chunks := chunk.CreateAll()
