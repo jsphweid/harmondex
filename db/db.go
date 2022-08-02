@@ -47,11 +47,13 @@ func GetMidiMetadatas(filenames []string) map[string]model.MidiMetadata {
 	res := make(map[string]model.MidiMetadata)
 	for _, v := range dbres.Responses["harmondex-metadata"] {
 		var s model.MidiMetadata
-		year, _ := strconv.ParseUint(*v["Year"].N, 10, 32)
+		if v["Year"].N != nil {
+			year, _ := strconv.ParseUint(*v["Year"].N, 10, 32)
+			s.Year = uint(year)
+		}
 		s.Artist = *v["Artist"].S
 		s.Release = *v["Release"].S
 		s.Title = *v["Title"].S
-		s.Year = uint(year)
 		res[*v["PK"].S] = s
 	}
 

@@ -2,53 +2,56 @@ package bucket
 
 import (
 	"bufio"
-	"encoding/binary"
 	"fmt"
 	"io"
 	"io/ioutil"
 	"os"
+	"path/filepath"
 	"regexp"
 	"sort"
 
 	"github.com/jsphweid/harmondex/chord"
 	"github.com/jsphweid/harmondex/constants"
+	"github.com/jsphweid/harmondex/db"
 	"github.com/jsphweid/harmondex/midi"
 	"github.com/jsphweid/harmondex/model"
 	"github.com/jsphweid/harmondex/util"
 )
 
-func maybePutChordInBuckets(chord model.Chord) {
+func maybePutChordInBuckets(c model.Chord) {
 	// TODO: bucketize other methods? 1. transposed, 2. note classes
 
 	// ignore really short or really long chords
-	if len(chord.Notes) < 2 || len(chord.Notes) > 16 {
+	if len(c.Notes) < 2 || len(c.Notes) > 16 {
 		return
 	}
 
 	// order them
-	sort.Slice(chord.Notes, func(i, j int) bool {
-		return chord.Notes[i] < chord.Notes[j]
+	sort.Slice(c.Notes, func(i, j int) bool {
+		return c.Notes[i] < c.Notes[j]
 	})
 
-	// put them in notes
-	var notes [16]uint8
-	copy(notes[:], chord.Notes)
+	bytes := chord.Serialize(c)
 
-	filename := fmt.Sprintf("%v/%03d.dat", constants.OutDir, notes[0])
+	filename := fmt.Sprintf("%v/%03d.dat", constants.OutDir, c.Notes[0])
 	f, err := os.OpenFile(filename, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0777)
 	if err != nil {
 		panic("Could not open bucket because: " + err.Error())
 	}
 	defer f.Close()
 
-	// TODO: create easy mechanism for reading/writing chord
-	var bytes [constants.ChordSize]byte
-	copy(bytes[:], notes[:])
-	binary.LittleEndian.PutUint32(bytes[16:20], chord.Offset)
-	binary.LittleEndian.PutUint32(bytes[20:24], chord.FileNum)
 	if _, err = f.Write(bytes[:]); err != nil {
 		panic("Could not write chord to bucket because: " + err.Error())
 	}
+}
+
+func fileHasMetadata(path string) bool {
+	_, file := filepath.Split(path)
+	metadatas := db.GetMidiMetadatas([]string{file})
+	if _, ok := metadatas[file]; ok {
+		return true
+	}
+	return false
 }
 
 func processMidiFile(fileNum uint32, path string) {
@@ -58,7 +61,8 @@ func processMidiFile(fileNum uint32, path string) {
 		return
 	}
 
-	chords, err := chord.GetChords(parsed)
+	hasMetadata := fileHasMetadata(path)
+	chords, err := chord.GetChords(parsed, hasMetadata)
 	if err != nil {
 		fmt.Printf("Skipping %v because: %v\n", path, err)
 		return
@@ -108,11 +112,7 @@ func ReadChords(path string) []model.Chord {
 		}
 
 		buf = buf[:constants.ChordSize]
-
-		var c model.Chord
-		c.Notes = util.FilterZeros(buf[:16])
-		c.Offset = binary.LittleEndian.Uint32(buf[16:20])
-		c.FileNum = binary.LittleEndian.Uint32(buf[20:24])
+		c := chord.Deserialize(buf)
 		res = append(res, c)
 	}
 	return res

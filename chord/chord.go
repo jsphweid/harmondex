@@ -1,10 +1,13 @@
 package chord
 
 import (
+	"encoding/binary"
 	"fmt"
 	"sort"
 
+	"github.com/jsphweid/harmondex/constants"
 	"github.com/jsphweid/harmondex/model"
+	"github.com/jsphweid/harmondex/util"
 	"gitlab.com/gomidi/midi/v2/smf"
 )
 
@@ -41,8 +44,7 @@ func getChord(pressed map[uint8]int64) model.Chord {
 	return c
 }
 
-func GetChords(s *smf.SMF) ([]model.Chord, error) {
-
+func GetChords(s *smf.SMF, hasMetadata bool) ([]model.Chord, error) {
 	// TODO: investigate
 	defer func() {
 		if err := recover(); err != nil {
@@ -103,9 +105,63 @@ func GetChords(s *smf.SMF) ([]model.Chord, error) {
 
 	for k := range timestampToChords {
 		c := timestampToChords[k]
+		c.FileHasMetadata = hasMetadata
 		if len(c.Notes) > 0 {
 			chords = append(chords, c)
 		}
 	}
 	return chords, nil
+}
+
+func serializeChordFlags(flags model.ChordFlag) uint8 {
+	// bit 1 - FileHasMetadata
+
+	// for now just return 128 or 0 since that's the only flag we have
+	if flags.FileHasMetadata {
+		return 128
+	}
+
+	return 0
+}
+
+func deserializeChordFlags(num uint8) model.ChordFlag {
+	// for now, we're only using 128 or 0
+	var cf model.ChordFlag
+	if num == 128 {
+		cf.FileHasMetadata = true
+	}
+	return cf
+}
+
+func createChordFlags(chord model.Chord) model.ChordFlag {
+	var cf model.ChordFlag
+	cf.FileHasMetadata = chord.FileHasMetadata
+	return cf
+}
+
+func Serialize(chord model.Chord) []byte {
+	res := make([]byte, constants.ChordSize)
+	cf := createChordFlags(chord)
+	copy(res[0:16], chord.Notes)
+	binary.LittleEndian.PutUint32(res[16:20], chord.Offset)
+	binary.LittleEndian.PutUint32(res[20:24], chord.FileNum)
+	res[24] = serializeChordFlags(cf)
+	return res
+}
+
+func Deserialize(bytes []byte) model.Chord {
+	var chord model.Chord
+	chord.Notes = util.FilterZeros(bytes[:16])
+	chord.Offset = binary.LittleEndian.Uint32(bytes[16:20])
+	chord.FileNum = binary.LittleEndian.Uint32(bytes[20:24])
+
+	cf := deserializeChordFlags(bytes[24])
+	chord.FileHasMetadata = cf.FileHasMetadata
+	return chord
+}
+
+func RankSortChords(chords []model.Chord) {
+	sort.Slice(chords, func(i, j int) bool {
+		return chords[i].FileHasMetadata
+	})
 }

@@ -10,10 +10,13 @@ require (
 
 require (
 	github.com/aws/aws-sdk-go v1.44.56 // indirect
+	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/jmespath/go-jmespath v0.4.0 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
+	github.com/pmezard/go-difflib v1.0.0 // indirect
 	golang.org/x/net v0.0.0-20220708220712-1185a9018129 // indirect
 	golang.org/x/text v0.3.7 // indirect
+	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
 
 require (
@@ -22,5 +25,6 @@ require (
 	github.com/inconshreveable/mousetrap v1.0.0 // indirect
 	github.com/rs/cors v1.8.2
 	github.com/spf13/pflag v1.0.5 // indirect
+	github.com/stretchr/testify v1.8.0
 	golang.org/x/exp v0.0.0-20220613132600-b0d781184e0d
 )

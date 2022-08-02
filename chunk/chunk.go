@@ -58,6 +58,7 @@ func makeChunk(m ChordKeyToChords, sortedKeys []string) model.ChunkOverview {
 	dataBuf := new(bytes.Buffer)
 	for i, key := range sortedKeys {
 		chords := m[key]
+		chord.RankSortChords(chords)
 		p := chunkIndex[key]
 		p.Start = uint32(dataOffset)
 		chunkIndex[key] = p
@@ -73,6 +74,7 @@ func makeChunk(m ChordKeyToChords, sortedKeys []string) model.ChunkOverview {
 			dataOffset += 8
 		}
 	}
+
 	// set End on the last sortedKey in chunkIndex
 	p := chunkIndex[sortedKeys[len(sortedKeys)-1]]
 	p.End = uint32(dataOffset)
