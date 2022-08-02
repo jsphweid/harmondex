@@ -23,7 +23,7 @@ func RecreateOutputDir() {
 	os.MkdirAll(dir, 0777)
 }
 
-func GatherAllMidiPaths(path string) []string {
+func GatherAllMidiPaths(path string, maxNum int) []string {
 	var res []string
 	walk := func(s string, d fs.DirEntry, err error) error {
 		if err != nil {
@@ -31,7 +31,9 @@ func GatherAllMidiPaths(path string) []string {
 		}
 		if !d.IsDir() {
 			if strings.HasSuffix(s, ".mid") || strings.HasSuffix(s, ".midi") {
-				res = append(res, s)
+				if maxNum != 0 && len(res) < maxNum {
+					res = append(res, s)
+				}
 			}
 		}
 		return nil
