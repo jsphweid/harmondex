@@ -31,7 +31,7 @@ func GatherAllMidiPaths(path string, maxNum int) []string {
 		}
 		if !d.IsDir() {
 			if strings.HasSuffix(s, ".mid") || strings.HasSuffix(s, ".midi") {
-				if maxNum != 0 && len(res) < maxNum {
+				if maxNum == 0 && len(res) < maxNum {
 					res = append(res, s)
 				}
 			}
