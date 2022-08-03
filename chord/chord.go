@@ -30,6 +30,8 @@ func CreateChordKey(notes []uint8) string {
 func getChord(pressed map[uint8]int64) model.Chord {
 	var notes []uint8
 	var c model.Chord
+	var oldestTime int64 = 9223372036854775807 // max int64
+	var latestTime int64 = 0
 	for note := range pressed {
 		notes = append(notes, note)
 
@@ -39,14 +41,25 @@ func getChord(pressed map[uint8]int64) model.Chord {
 		// be midi files that long. Millis gives us 1200 hours max length
 		// which is obviously totally sufficient
 		c.Offset = uint32(pressed[note] / 1000)
+
+		if pressed[note] < oldestTime {
+			oldestTime = pressed[note]
+		}
+		if pressed[note] > latestTime {
+			latestTime = pressed[note]
+		}
 	}
 	c.Notes = notes
+
+	if latestTime-oldestTime <= 1000000 {
+		c.OldestEventWithin1Sec = true
+	}
 	return c
 }
 
 func GetChords(s *smf.SMF, hasMetadata bool) ([]model.Chord, error) {
-	// TODO: investigate
 	defer func() {
+		// TODO: investigate why this happens someday
 		if err := recover(); err != nil {
 			fmt.Println(err)
 		}
@@ -83,7 +96,7 @@ func GetChords(s *smf.SMF, hasMetadata bool) ([]model.Chord, error) {
 		}
 	}
 
-	// prioritize smaller offset values then note off
+	// prioritize smaller offset values, then note off
 	sort.Slice(reducedEvents, func(i, j int) bool {
 		if reducedEvents[i].Offset != reducedEvents[j].Offset {
 			return reducedEvents[i].Offset < reducedEvents[j].Offset
@@ -99,7 +112,9 @@ func GetChords(s *smf.SMF, hasMetadata bool) ([]model.Chord, error) {
 			timestampToChords[evt.Offset] = getChord(pressed)
 		} else {
 			pressed[evt.Note] = evt.Offset
-			timestampToChords[evt.Offset] = getChord(pressed)
+			chord := getChord(pressed)
+			chord.FormedByNoteOn = true
+			timestampToChords[evt.Offset] = chord
 		}
 	}
 
@@ -114,28 +129,51 @@ func GetChords(s *smf.SMF, hasMetadata bool) ([]model.Chord, error) {
 }
 
 func serializeChordFlags(flags model.ChordFlag) uint8 {
-	// bit 1 - FileHasMetadata
+	var res uint8
 
-	// for now just return 128 or 0 since that's the only flag we have
+	// bit 1 - FileHasMetadata
+	// bit 2 - FormedByNoteOn
+	// bit 3 - OldestEventWithin1Sec
+
 	if flags.FileHasMetadata {
-		return 128
+		res = 1<<7 | res
 	}
 
-	return 0
+	if flags.FormedByNoteOn {
+		res = 1<<6 | res
+	}
+
+	if flags.OldestEventWithin1Sec {
+		res = 1<<5 | res
+	}
+
+	return res
 }
 
 func deserializeChordFlags(num uint8) model.ChordFlag {
 	// for now, we're only using 128 or 0
 	var cf model.ChordFlag
-	if num == 128 {
+
+	if 1<<7&num != 0 {
 		cf.FileHasMetadata = true
 	}
+
+	if 1<<6&num != 0 {
+		cf.FormedByNoteOn = true
+	}
+
+	if 1<<5&num != 0 {
+		cf.OldestEventWithin1Sec = true
+	}
+
 	return cf
 }
 
 func createChordFlags(chord model.Chord) model.ChordFlag {
 	var cf model.ChordFlag
 	cf.FileHasMetadata = chord.FileHasMetadata
+	cf.FormedByNoteOn = chord.FormedByNoteOn
+	cf.OldestEventWithin1Sec = chord.OldestEventWithin1Sec
 	return cf
 }
 
@@ -157,11 +195,29 @@ func Deserialize(bytes []byte) model.Chord {
 
 	cf := deserializeChordFlags(bytes[24])
 	chord.FileHasMetadata = cf.FileHasMetadata
+	chord.FormedByNoteOn = cf.FormedByNoteOn
+	chord.OldestEventWithin1Sec = cf.OldestEventWithin1Sec
 	return chord
 }
 
 func RankSortChords(chords []model.Chord) {
+	// add scores
+	for i, chord := range chords {
+		var score uint8
+		if chord.FileHasMetadata {
+			score += 1
+		}
+		if chord.FormedByNoteOn {
+			score += 3
+		}
+		if chord.OldestEventWithin1Sec {
+			score += 3
+		}
+		chords[i].RankScore = score
+	}
+
+	// sort
 	sort.Slice(chords, func(i, j int) bool {
-		return chords[i].FileHasMetadata
+		return chords[i].RankScore > chords[j].RankScore
 	})
 }

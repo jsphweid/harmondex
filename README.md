@@ -18,13 +18,13 @@ file number - number that identifies an original midi file
 
 
 # TODO
+ - [ ] return paginated results with page info
+ - [ ] partial chords might be accidentally prioritized (there is no look ahead)
  - [ ] come up with better name
  - [ ] profile everything in indexing and see what can be improved
  - [ ] use map
  - [ ] validate results
  - [ ] why are the midi notes not stopping in playback on FE
- - [ ] improve index to consider arrival of chord in ranking
- - [ ] improve index to consider presence of metadata in ranking
  - [ ] caching?
  - [ ] 30ms just getting results
  - [ ] profile... 300ms response now is not good
