@@ -14,31 +14,28 @@ import (
 )
 
 func RecreateOutputDir() {
-	path, err := os.Getwd()
-	if err != nil {
-		panic("Could not RecreateOutputDir: " + err.Error())
-	}
-	dir := path + "/" + constants.OutDir
+	dir := GetIndexDir()
 	os.RemoveAll(dir)
 	os.MkdirAll(dir, 0777)
 }
 
-func GatherAllMidiPaths(path string, maxNum int) []string {
+func GatherAllMidiPaths(maxNum int) []string {
 	var res []string
 	walk := func(s string, d fs.DirEntry, err error) error {
+		name := filepath.Base(s)
 		if err != nil {
 			panic("Error walking: " + err.Error())
 		}
 		if !d.IsDir() {
-			if strings.HasSuffix(s, ".mid") || strings.HasSuffix(s, ".midi") {
+			if strings.HasSuffix(name, ".mid") || strings.HasSuffix(name, ".midi") {
 				if maxNum == 0 || len(res) < maxNum {
-					res = append(res, s)
+					res = append(res, name)
 				}
 			}
 		}
 		return nil
 	}
-	filepath.WalkDir(path, walk)
+	filepath.WalkDir(GetMediaDir(), walk)
 	return res
 }
 
@@ -126,4 +123,29 @@ func Sum[A constraints.Integer](nums []A) uint64 {
 		total += uint64(v)
 	}
 	return total
+}
+
+func GetIndexDir() string {
+	path := os.Getenv("INDEX_PATH")
+	if path != "" {
+		return path
+	}
+	return "./out"
+}
+
+func GetMediaDir() string {
+	path := os.Getenv("MEDIA_PATH")
+	if path != "" {
+		return path
+	}
+
+	panic("MEDIA_PATH environment variable is not set!")
+}
+
+func GetFileNumToNamePath() string {
+	return filepath.Join(GetIndexDir(), constants.FileNumToNameFilename)
+}
+
+func GetAllChunksPath() string {
+	return filepath.Join(GetIndexDir(), constants.AllChunksFilename)
 }

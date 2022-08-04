@@ -5,7 +5,6 @@ import (
 
 	"github.com/jsphweid/harmondex/bucket"
 	"github.com/jsphweid/harmondex/chunk"
-	"github.com/jsphweid/harmondex/constants"
 	"github.com/jsphweid/harmondex/file"
 	"github.com/jsphweid/harmondex/util"
 	"github.com/spf13/cobra"
@@ -20,30 +19,26 @@ var indexCmd = &cobra.Command{
 	Short: "Creates index",
 	Long:  `Creates index`,
 	Run: func(cmd *cobra.Command, args []string) {
-		if len(args) < 1 {
-			panic("Need at least 1 arg... the path to the content folder")
-		}
-
 		var maxNum int
-		if len(args) == 2 {
-			arg2, err := strconv.Atoi(args[1])
+		if len(args) == 1 {
+			arg1, err := strconv.Atoi(args[0])
 			if err != nil {
 				panic(err)
 			}
-			maxNum = arg2
+			maxNum = arg1
 		}
 
-		run(args[0], maxNum)
+		run(maxNum)
 	},
 }
 
-func run(contentPath string, maxNum int) {
+func run(maxNum int) {
 	util.RecreateOutputDir()
-	paths := util.GatherAllMidiPaths(contentPath, maxNum)
+	paths := util.GatherAllMidiPaths(maxNum)
 	fileNumMap := file.CreateFileNumMap(paths)
 	bucket.ProcessAllMidiFiles(fileNumMap)
 	chunks := chunk.CreateAll()
-	util.CreateBinary(constants.OutDir+"/allChunks.dat", chunks)
-	util.CreateBinary(constants.OutDir+"/indexToPath.dat", fileNumMap)
+	util.CreateBinary(util.GetAllChunksPath(), chunks)
+	util.CreateBinary(util.GetFileNumToNamePath(), fileNumMap)
 	// bucket.DeleteAll()
 }

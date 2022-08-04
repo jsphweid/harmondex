@@ -33,7 +33,7 @@ func maybePutChordInBuckets(c model.Chord) {
 
 	bytes := chord.Serialize(c)
 
-	filename := fmt.Sprintf("%v/%03d.dat", constants.OutDir, c.Notes[0])
+	filename := fmt.Sprintf("%v/%03d.dat", util.GetIndexDir(), c.Notes[0])
 	f, err := os.OpenFile(filename, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0777)
 	if err != nil {
 		panic("Could not open bucket because: " + err.Error())
@@ -45,26 +45,26 @@ func maybePutChordInBuckets(c model.Chord) {
 	}
 }
 
-func fileHasMetadata(path string) bool {
-	_, file := filepath.Split(path)
-	metadatas := db.GetMidiMetadatas([]string{file})
-	if _, ok := metadatas[file]; ok {
+func fileHasMetadata(filename string) bool {
+	metadatas := db.GetMidiMetadatas([]string{filename})
+	if _, ok := metadatas[filename]; ok {
 		return true
 	}
 	return false
 }
 
-func processMidiFile(fileNum uint32, path string) {
+func processMidiFile(fileNum uint32, filename string) {
+	path := filepath.Join(util.GetMediaDir(), filename)
 	parsed, err := midi.ReadMidiFile(path)
 	if err != nil {
-		fmt.Printf("Skipping %v because: %v\n", path, err)
+		fmt.Printf("Skipping %v because: %v\n", filename, err)
 		return
 	}
 
-	hasMetadata := fileHasMetadata(path)
+	hasMetadata := fileHasMetadata(filename)
 	chords, err := chord.GetChords(parsed, hasMetadata)
 	if err != nil {
-		fmt.Printf("Skipping %v because: %v\n", path, err)
+		fmt.Printf("Skipping %v because: %v\n", filename, err)
 		return
 	}
 
@@ -83,7 +83,8 @@ func ProcessAllMidiFiles(m model.FileNumToMidiPath) {
 }
 
 func DeleteAll() {
-	files, err := ioutil.ReadDir(constants.OutDir)
+	outDir := util.GetIndexDir()
+	files, err := ioutil.ReadDir(outDir)
 	if err != nil {
 		panic("Could not read dir because: " + err.Error())
 	}
@@ -92,7 +93,7 @@ func DeleteAll() {
 	for _, file := range files {
 		filename := file.Name()
 		if r.MatchString(filename) {
-			os.Remove(constants.OutDir + "/" + filename)
+			os.Remove(filepath.Join(outDir, filename))
 		}
 	}
 }
