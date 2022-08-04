@@ -15,9 +15,9 @@ type SearchResponse struct {
 
 type MidiMetadata struct {
 	Year    uint   `json:"year"`
-	Artist  string `json:"artist`
-	Title   string `json:"title`
-	Release string `json:"release`
+	Artist  string `json:"artist"`
+	Title   string `json:"title"`
+	Release string `json:"release"`
 }
 
 type SearchRequestBody struct {
