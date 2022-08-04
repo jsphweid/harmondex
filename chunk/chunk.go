@@ -8,6 +8,7 @@ import (
 	"io"
 	"io/ioutil"
 	"os"
+	"path/filepath"
 	"sort"
 
 	"github.com/google/uuid"
@@ -100,7 +101,7 @@ func makeChunk(m ChordKeyToChords, sortedKeys []string) model.ChunkOverview {
 	finalBytes = append(finalBytes, dataBuf.Bytes()...)
 
 	// save as a file
-	filename := constants.OutDir + "/" + c.Filename
+	filename := filepath.Join(constants.GetIndexDir(), c.Filename)
 	err = ioutil.WriteFile(filename, finalBytes, 0777)
 	if err != nil {
 		panic("Write failed for chunk file: " + err.Error())
@@ -141,14 +142,15 @@ func maybeMakeChunks(m ChordKeyToChords, force bool) []model.ChunkOverview {
 }
 
 func getBucketPaths() []string {
-	files, err := ioutil.ReadDir(constants.OutDir)
+	outDir := constants.GetIndexDir()
+	files, err := ioutil.ReadDir(outDir)
 	if err != nil {
 		panic("Could not make chunks because out file not read:" + err.Error())
 	}
 
 	var res []string
 	for _, file := range files {
-		res = append(res, constants.OutDir+"/"+file.Name())
+		res = append(res, outDir+"/"+file.Name())
 	}
 	return res
 }

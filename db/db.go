@@ -15,6 +15,12 @@ func GetMidiMetadatas(filenames []string) map[string]model.MidiMetadata {
 		panic("Not supposed to pass in more than 10 filenames!")
 	}
 
+	res := make(map[string]model.MidiMetadata)
+
+	if len(filenames) == 0 {
+		return res
+	}
+
 	var keys []map[string]*dynamodb.AttributeValue
 	for _, filename := range filenames {
 		key := make(map[string]*dynamodb.AttributeValue)
@@ -44,7 +50,6 @@ func GetMidiMetadatas(filenames []string) map[string]model.MidiMetadata {
 		panic("Error from DynamoDB: " + err.Error())
 	}
 
-	res := make(map[string]model.MidiMetadata)
 	for _, v := range dbres.Responses["harmondex-metadata"] {
 		var s model.MidiMetadata
 		if v["Year"].N != nil {

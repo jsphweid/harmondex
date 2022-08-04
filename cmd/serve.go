@@ -9,8 +9,8 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"path/filepath"
 	"strconv"
-	"strings"
 
 	"github.com/gorilla/mux"
 	"github.com/jsphweid/harmondex/chord"
@@ -35,11 +35,7 @@ var serveCmd = &cobra.Command{
 	Short: "serves",
 	Long:  `serves`,
 	Run: func(cmd *cobra.Command, args []string) {
-		if len(args) != 1 {
-			panic("Need at least 1 arg... the path to the content folder")
-		}
-
-		serve(args[0])
+		serve()
 	},
 }
 
@@ -56,7 +52,7 @@ func parseResult(buf []byte) []model.RawResult {
 
 func findChordsInChunk(filename string, chordKey string) []model.RawResult {
 	// read chunk
-	f := util.OpenFileOrPanic(constants.OutDir + "/" + filename)
+	f := util.OpenFileOrPanic(filepath.Join(constants.GetIndexDir(), filename))
 	index, _ := chunk.ReadIndexOrPanic(f)
 
 	val, ok := index[chordKey]
@@ -118,8 +114,7 @@ func fetchMidiMetadata(matches []model.RawResult) map[uint32]*model.MidiMetadata
 	var filenames []string
 	filenameToFileId := make(map[string]uint32)
 	for _, fileId := range fileIds {
-		splittedPath := strings.Split(fileNumMap[fileId], "/")
-		filename := splittedPath[len(splittedPath)-1]
+		filename := fileNumMap[fileId]
 		filenames = append(filenames, filename)
 		filenameToFileId[filename] = fileId
 	}
@@ -135,9 +130,9 @@ func handleGetFile(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		return
 	}
-	if filepath, ok := fileNumMap[uint32(fileNum)]; ok {
-		fmt.Printf("filepath: %v\n", filepath)
-		bytes, err := ioutil.ReadFile(filepath)
+	if filename, ok := fileNumMap[uint32(fileNum)]; ok {
+		path := filepath.Join(constants.GetMediaDir(), filename)
+		bytes, err := ioutil.ReadFile(path)
 		if err != nil {
 			fmt.Println("Error reading midi file: " + err.Error())
 			return
@@ -174,9 +169,9 @@ func UnauthorizedHandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, "401 Unauthorized\n")
 }
 
-func serve(contentPath string) {
-	allChunks = util.ReadBinaryOrPanic[[]model.ChunkOverview](constants.OutDir + "/allChunks.dat")
-	fileNumMap = util.ReadBinaryOrPanic[model.FileNumToMidiPath](constants.OutDir + "/indexToPath.dat")
+func serve() {
+	allChunks = util.ReadBinaryOrPanic[[]model.ChunkOverview](constants.GetIndexDir() + "/allChunks.dat")
+	fileNumMap = util.ReadBinaryOrPanic[model.FileNumToMidiPath](constants.GetIndexDir() + "/indexToPath.dat")
 
 	router := mux.NewRouter()
 	router.HandleFunc("/search", handleSearch).Methods("POST")
