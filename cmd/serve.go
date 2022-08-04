@@ -89,8 +89,8 @@ func findChords(notes model.Notes) []model.RawResult {
 	return empty
 }
 
-func fetchMidiMetadata(fileIds []uint32) map[uint32]*model.MidiMetadata {
-	res := make(map[uint32]*model.MidiMetadata)
+func fetchMidiMetadata(fileIds []uint32) map[uint32]model.MidiMetadata {
+	res := make(map[uint32]model.MidiMetadata)
 	var filenames []string
 	filenameToFileId := make(map[string]uint32)
 	for _, fileId := range fileIds {
@@ -98,8 +98,9 @@ func fetchMidiMetadata(fileIds []uint32) map[uint32]*model.MidiMetadata {
 		filenames = append(filenames, filename)
 		filenameToFileId[filename] = fileId
 	}
-	for filename, metadata := range db.GetMidiMetadatas(filenames) {
-		res[filenameToFileId[filename]] = &metadata
+	filenameToMetadata := db.GetMidiMetadatas(filenames)
+	for filename, metadata := range filenameToMetadata {
+		res[filenameToFileId[filename]] = metadata
 	}
 	return res
 }
@@ -121,7 +122,7 @@ func handleGetFile(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func formulateSearchResponse(matches []model.RawResult, start int) model.SearchResponse {
+func sendSearchResponse(w http.ResponseWriter, matches []model.RawResult, start int) {
 	var uniqueFileIds []uint32
 	fileIdToOffsets := make(map[uint32][]float32)
 
@@ -142,7 +143,8 @@ func formulateSearchResponse(matches []model.RawResult, start int) model.SearchR
 	resp.Results = []model.SearchResultV2{}
 
 	if start >= len(uniqueFileIds) {
-		return resp
+		json.NewEncoder(w).Encode(resp)
+		return
 	}
 
 	ids := uniqueFileIds[start:util.Min(len(uniqueFileIds), start+10)]
@@ -151,11 +153,15 @@ func formulateSearchResponse(matches []model.RawResult, start int) model.SearchR
 		var sr model.SearchResultV2
 		sr.FileId = id
 		sr.Offsets = fileIdToOffsets[id]
-		sr.MidiMetadata = fileIdToMetadata[id]
+		sr.MidiMetadata = nil
+		if _, ok := fileIdToMetadata[id]; ok {
+			val := fileIdToMetadata[id]
+			sr.MidiMetadata = &val
+		}
 		resp.Results = append(resp.Results, sr)
 	}
 
-	return resp
+	json.NewEncoder(w).Encode(resp)
 }
 
 func getStart(r *http.Request) int {
@@ -189,8 +195,7 @@ func handleSearch(w http.ResponseWriter, r *http.Request) {
 
 	matches := findChords(input.Chords[0])
 	start := getStart(r)
-	res := formulateSearchResponse(matches, start)
-	json.NewEncoder(w).Encode(res)
+	sendSearchResponse(w, matches, start)
 }
 
 func UnauthorizedHandler(w http.ResponseWriter, r *http.Request) {
