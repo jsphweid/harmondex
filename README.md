@@ -18,7 +18,6 @@ file number - number that identifies an original midi file
 
 
 # TODO
- - [ ] return paginated results with page info
  - [ ] partial chords might be accidentally prioritized (there is no look ahead)
  - [ ] come up with better name
  - [ ] profile everything in indexing and see what can be improved
@@ -30,3 +29,4 @@ file number - number that identifies an original midi file
  - [ ] profile... 300ms response now is not good
  - [ ] write some e2e test?
  - [ ] run tests on CI?
+ - [ ] why are there duplicate offsets...?

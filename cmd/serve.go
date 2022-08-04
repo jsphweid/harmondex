@@ -89,27 +89,8 @@ func findChords(notes model.Notes) []model.RawResult {
 	return empty
 }
 
-func matchesToResults(matches []model.RawResult) []model.SearchResult {
-	res := make([]model.SearchResult, 0)
-	fileIdToMetadata := fetchMidiMetadata(matches)
-	for _, rr := range matches {
-		searchResult := model.SearchResult{
-			FileId:       rr.FileId,
-			Offset:       float32(rr.Offset) / 1000, // convert to seconds because it's clearer
-			MidiMetadata: fileIdToMetadata[rr.FileId],
-		}
-		res = append(res, searchResult)
-	}
-	return res
-}
-
-func fetchMidiMetadata(matches []model.RawResult) map[uint32]*model.MidiMetadata {
+func fetchMidiMetadata(fileIds []uint32) map[uint32]*model.MidiMetadata {
 	res := make(map[uint32]*model.MidiMetadata)
-	uniqueFileIds := make(map[uint32]bool)
-	for _, rr := range matches {
-		uniqueFileIds[rr.FileId] = true
-	}
-	fileIds := util.GetKeys(uniqueFileIds)
 	var filenames []string
 	filenameToFileId := make(map[string]uint32)
 	for _, fileId := range fileIds {
@@ -140,6 +121,54 @@ func handleGetFile(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func formulateSearchResponse(matches []model.RawResult, start int) model.SearchResponse {
+	var uniqueFileIds []uint32
+	fileIdToOffsets := make(map[uint32][]float32)
+
+	for _, match := range matches {
+		offset := float32(match.Offset) / 1000 // convert to seconds because it's clearer
+		if offsets, ok := fileIdToOffsets[match.FileId]; ok {
+			fileIdToOffsets[match.FileId] = append(offsets, offset)
+		} else {
+			uniqueFileIds = append(uniqueFileIds, match.FileId)
+			fileIdToOffsets[match.FileId] = []float32{offset}
+		}
+	}
+
+	var resp model.SearchResponse
+	resp.NumFiles = len(uniqueFileIds)
+	resp.NumMatches = len(matches)
+	resp.Start = start // TODO: is this really that valuable?
+	resp.Results = []model.SearchResultV2{}
+
+	if start >= len(uniqueFileIds) {
+		return resp
+	}
+
+	ids := uniqueFileIds[start:util.Min(len(uniqueFileIds), start+10)]
+	fileIdToMetadata := fetchMidiMetadata(ids)
+	for _, id := range ids {
+		var sr model.SearchResultV2
+		sr.FileId = id
+		sr.Offsets = fileIdToOffsets[id]
+		sr.MidiMetadata = fileIdToMetadata[id]
+		resp.Results = append(resp.Results, sr)
+	}
+
+	return resp
+}
+
+func getStart(r *http.Request) int {
+	start := r.URL.Query().Get("start")
+	num, err := strconv.Atoi(start)
+
+	if err != nil {
+		return 0
+	}
+
+	return num
+}
+
 func handleSearch(w http.ResponseWriter, r *http.Request) {
 	reqBody, err := ioutil.ReadAll(r.Body)
 	if err != nil {
@@ -159,8 +188,9 @@ func handleSearch(w http.ResponseWriter, r *http.Request) {
 	}
 
 	matches := findChords(input.Chords[0])
-	max_matches := util.Min(len(matches), 10)
-	json.NewEncoder(w).Encode(matchesToResults(matches[:max_matches]))
+	start := getStart(r)
+	res := formulateSearchResponse(matches, start)
+	json.NewEncoder(w).Encode(res)
 }
 
 func UnauthorizedHandler(w http.ResponseWriter, r *http.Request) {
