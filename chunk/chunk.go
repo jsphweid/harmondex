@@ -151,7 +151,7 @@ func getBucketPaths() []string {
 
 	var res []string
 	for _, file := range files {
-		res = append(res, outDir+"/"+file.Name())
+		res = append(res, filepath.Join(outDir, file.Name()))
 	}
 	return res
 }
