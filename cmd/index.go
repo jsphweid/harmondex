@@ -5,7 +5,6 @@ import (
 
 	"github.com/jsphweid/harmondex/bucket"
 	"github.com/jsphweid/harmondex/chunk"
-	"github.com/jsphweid/harmondex/constants"
 	"github.com/jsphweid/harmondex/file"
 	"github.com/jsphweid/harmondex/util"
 	"github.com/spf13/cobra"
@@ -39,7 +38,7 @@ func run(maxNum int) {
 	fileNumMap := file.CreateFileNumMap(paths)
 	bucket.ProcessAllMidiFiles(fileNumMap)
 	chunks := chunk.CreateAll()
-	util.CreateBinary(constants.GetIndexDir()+"/allChunks.dat", chunks)
-	util.CreateBinary(constants.GetIndexDir()+"/indexToPath.dat", fileNumMap)
+	util.CreateBinary(util.GetAllChunksPath(), chunks)
+	util.CreateBinary(util.GetFileNumToNamePath(), fileNumMap)
 	// bucket.DeleteAll()
 }

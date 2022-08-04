@@ -45,7 +45,7 @@ type chunksReport struct {
 func analyzeBuckets() bucketsReport {
 	var report bucketsReport
 
-	files, err := ioutil.ReadDir(constants.GetIndexDir())
+	files, err := ioutil.ReadDir(util.GetIndexDir())
 	if err != nil {
 		panic("Could not read dir because: " + err.Error())
 	}
@@ -55,7 +55,7 @@ func analyzeBuckets() bucketsReport {
 		filename := file.Name()
 		if r.MatchString(filename) {
 			report.numFiles += 1
-			path := filepath.Join(constants.GetIndexDir(), filename)
+			path := filepath.Join(util.GetIndexDir(), filename)
 			f, err := os.Open(path)
 			if err != nil {
 				panic("Could not open file")
@@ -74,7 +74,7 @@ func analyzeBuckets() bucketsReport {
 
 func analyzeChunks() chunksReport {
 	var report chunksReport
-	files, err := ioutil.ReadDir(constants.GetIndexDir())
+	files, err := ioutil.ReadDir(util.GetIndexDir())
 	if err != nil {
 		panic("Could not read dir because: " + err.Error())
 	}
@@ -84,7 +84,7 @@ func analyzeChunks() chunksReport {
 		filename := file.Name()
 		if r.MatchString(filename) {
 			report.numFiles += 1
-			f := util.OpenFileOrPanic(filepath.Join(constants.GetIndexDir(), filename))
+			f := util.OpenFileOrPanic(filepath.Join(util.GetIndexDir(), filename))
 			index, indexLength := chunk.ReadIndexOrPanic(f)
 
 			// count chords

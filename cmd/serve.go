@@ -15,7 +15,6 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/jsphweid/harmondex/chord"
 	"github.com/jsphweid/harmondex/chunk"
-	"github.com/jsphweid/harmondex/constants"
 	"github.com/jsphweid/harmondex/db"
 	"github.com/jsphweid/harmondex/model"
 	"github.com/jsphweid/harmondex/util"
@@ -52,7 +51,7 @@ func parseResult(buf []byte) []model.RawResult {
 
 func findChordsInChunk(filename string, chordKey string) []model.RawResult {
 	// read chunk
-	f := util.OpenFileOrPanic(filepath.Join(constants.GetIndexDir(), filename))
+	f := util.OpenFileOrPanic(filepath.Join(util.GetIndexDir(), filename))
 	index, _ := chunk.ReadIndexOrPanic(f)
 
 	val, ok := index[chordKey]
@@ -131,7 +130,7 @@ func handleGetFile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if filename, ok := fileNumMap[uint32(fileNum)]; ok {
-		path := filepath.Join(constants.GetMediaDir(), filename)
+		path := filepath.Join(util.GetMediaDir(), filename)
 		bytes, err := ioutil.ReadFile(path)
 		if err != nil {
 			fmt.Println("Error reading midi file: " + err.Error())
@@ -170,8 +169,8 @@ func UnauthorizedHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func serve() {
-	allChunks = util.ReadBinaryOrPanic[[]model.ChunkOverview](constants.GetIndexDir() + "/allChunks.dat")
-	fileNumMap = util.ReadBinaryOrPanic[model.FileNumToMidiPath](constants.GetIndexDir() + "/indexToPath.dat")
+	allChunks = util.ReadBinaryOrPanic[[]model.ChunkOverview](util.GetAllChunksPath())
+	fileNumMap = util.ReadBinaryOrPanic[model.FileNumToMidiPath](util.GetFileNumToNamePath())
 
 	router := mux.NewRouter()
 	router.HandleFunc("/search", handleSearch).Methods("POST")

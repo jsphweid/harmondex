@@ -16,6 +16,7 @@ import (
 	"github.com/jsphweid/harmondex/chord"
 	"github.com/jsphweid/harmondex/constants"
 	"github.com/jsphweid/harmondex/model"
+	"github.com/jsphweid/harmondex/util"
 )
 
 type ChordKeyToChords = map[string][]model.Chord
@@ -101,7 +102,7 @@ func makeChunk(m ChordKeyToChords, sortedKeys []string) model.ChunkOverview {
 	finalBytes = append(finalBytes, dataBuf.Bytes()...)
 
 	// save as a file
-	filename := filepath.Join(constants.GetIndexDir(), c.Filename)
+	filename := filepath.Join(util.GetIndexDir(), c.Filename)
 	err = ioutil.WriteFile(filename, finalBytes, 0777)
 	if err != nil {
 		panic("Write failed for chunk file: " + err.Error())
@@ -142,7 +143,7 @@ func maybeMakeChunks(m ChordKeyToChords, force bool) []model.ChunkOverview {
 }
 
 func getBucketPaths() []string {
-	outDir := constants.GetIndexDir()
+	outDir := util.GetIndexDir()
 	files, err := ioutil.ReadDir(outDir)
 	if err != nil {
 		panic("Could not make chunks because out file not read:" + err.Error())

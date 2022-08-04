@@ -33,7 +33,7 @@ func maybePutChordInBuckets(c model.Chord) {
 
 	bytes := chord.Serialize(c)
 
-	filename := fmt.Sprintf("%v/%03d.dat", constants.GetIndexDir(), c.Notes[0])
+	filename := fmt.Sprintf("%v/%03d.dat", util.GetIndexDir(), c.Notes[0])
 	f, err := os.OpenFile(filename, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0777)
 	if err != nil {
 		panic("Could not open bucket because: " + err.Error())
@@ -54,7 +54,7 @@ func fileHasMetadata(filename string) bool {
 }
 
 func processMidiFile(fileNum uint32, filename string) {
-	path := filepath.Join(constants.GetMediaDir(), filename)
+	path := filepath.Join(util.GetMediaDir(), filename)
 	parsed, err := midi.ReadMidiFile(path)
 	if err != nil {
 		fmt.Printf("Skipping %v because: %v\n", filename, err)
@@ -83,7 +83,7 @@ func ProcessAllMidiFiles(m model.FileNumToMidiPath) {
 }
 
 func DeleteAll() {
-	outDir := constants.GetIndexDir()
+	outDir := util.GetIndexDir()
 	files, err := ioutil.ReadDir(outDir)
 	if err != nil {
 		panic("Could not read dir because: " + err.Error())

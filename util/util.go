@@ -14,7 +14,7 @@ import (
 )
 
 func RecreateOutputDir() {
-	dir := constants.GetIndexDir()
+	dir := GetIndexDir()
 	os.RemoveAll(dir)
 	os.MkdirAll(dir, 0777)
 }
@@ -35,7 +35,7 @@ func GatherAllMidiPaths(maxNum int) []string {
 		}
 		return nil
 	}
-	filepath.WalkDir(constants.GetMediaDir(), walk)
+	filepath.WalkDir(GetMediaDir(), walk)
 	return res
 }
 
@@ -123,4 +123,29 @@ func Sum[A constraints.Integer](nums []A) uint64 {
 		total += uint64(v)
 	}
 	return total
+}
+
+func GetIndexDir() string {
+	path := os.Getenv("INDEX_PATH")
+	if path != "" {
+		return path
+	}
+	return "./out"
+}
+
+func GetMediaDir() string {
+	path := os.Getenv("MEDIA_PATH")
+	if path != "" {
+		return path
+	}
+
+	panic("MEDIA_PATH environment variable is not set!")
+}
+
+func GetFileNumToNamePath() string {
+	return filepath.Join(GetIndexDir(), constants.FileNumToNameFilename)
+}
+
+func GetAllChunksPath() string {
+	return filepath.Join(GetIndexDir(), constants.AllChunksFilename)
 }
