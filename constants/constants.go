@@ -9,3 +9,6 @@ const PreferredChunkSize = 64 * 1024 * 1024
 const AllChunksFilename = "allChunks.dat"
 
 const FileNumToNameFilename = "fileNumsToNames.dat"
+
+// minimum number milliseconds of separation between chords to justify saving
+const NewChordMsThreshold = 10
