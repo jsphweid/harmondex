@@ -28,7 +28,6 @@ file number - number that identifies an original midi file
  - [ ] 30ms just getting results
  - [ ] profile... 300ms response now is not good
  - [ ] write some e2e test?
- - [ ] run tests on CI?
 
 
 ###
