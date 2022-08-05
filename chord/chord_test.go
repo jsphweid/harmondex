@@ -37,7 +37,7 @@ func TestSortsChordsWithOldestEventWithin1SecFirst(t *testing.T) {
 	RankSortChords(chords)
 
 	assert := assert.New(t)
-	assert.Equal(chords[0].OldestEventWithin1Sec, true)
+	assert.Equal(chords[0].OldestEventWithin1Sec, false)
 	assert.Equal(chords[1].OldestEventWithin1Sec, false)
 }
 
