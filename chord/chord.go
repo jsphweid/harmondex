@@ -27,7 +27,7 @@ func CreateChordKey(notes []uint8) string {
 	return res
 }
 
-func getChord(pressed map[uint8]int64, evt model.ReducedEvent) model.Chord {
+func getChord(pressed map[uint8]int64, evt model.ReducedEvent, hasMetadata bool) model.Chord {
 	var notes []uint8
 	var c model.Chord
 	var oldestTime int64 = 9223372036854775807 // max int64
@@ -51,6 +51,8 @@ func getChord(pressed map[uint8]int64, evt model.ReducedEvent) model.Chord {
 	if evt.Offset-oldestTime <= 1000000 {
 		c.OldestEventWithin1Sec = true
 	}
+
+	c.FileHasMetadata = hasMetadata
 
 	return c
 }
@@ -101,38 +103,27 @@ func GetChords(s *smf.SMF, hasMetadata bool) ([]model.Chord, error) {
 	})
 
 	pressed := make(map[uint8]int64)
-	var chords []model.Chord
-	for _, evt := range reducedEvents {
+	var res []model.Chord
+	var lastEvent model.ReducedEvent
+
+	for i, evt := range reducedEvents {
+		// check if pressed should be added
+		if i > 0 && evt.Offset > lastEvent.Offset+constants.NewChordThreshold {
+			// ignore really short or really long chords
+			if len(pressed) >= 2 && len(pressed) <= 16 {
+				res = append(res, getChord(pressed, lastEvent, hasMetadata))
+			}
+		}
+
+		// maintain pressed state
+		lastEvent = evt
 		if evt.IsNoteOff {
 			delete(pressed, evt.Note)
 		} else {
 			pressed[evt.Note] = evt.Offset
 		}
-
-		// ignore really short or really long chords
-		if len(pressed) >= 2 && len(pressed) <= 16 {
-			chords = append(chords, getChord(pressed, evt))
-		}
 	}
 
-	var res []model.Chord
-
-	if len(chords) == 0 {
-		return res, nil
-	}
-
-	for i, c := range chords {
-		c.FileHasMetadata = hasMetadata
-
-		// only write chords that have notes and have enough space
-		// between midi events to justify the possibility of a chord
-		if len(c.Notes) > 0 && i > 0 {
-			if c.Offset-chords[i-1].Offset >= constants.NewChordMsThreshold {
-				res = append(res, chords[i-1])
-			}
-		}
-	}
-	res = append(res, chords[len(chords)-1])
 	return res, nil
 }
 

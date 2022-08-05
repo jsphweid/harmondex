@@ -10,5 +10,5 @@ const AllChunksFilename = "allChunks.dat"
 
 const FileNumToNameFilename = "fileNumsToNames.dat"
 
-// minimum number milliseconds of separation between chords to justify saving
-const NewChordMsThreshold = 10
+// minimum number microseconds of separation between chords to justify saving
+const NewChordThreshold = 10000
