@@ -38,6 +38,13 @@ This created roughly 261,397,621 per 180k files. 43 chunks files about 70MB each
 
 After the change, we were able to cut out 30% of the chords and chunk files
 
+### Run Tests
+
+Run all:
+ - `go test -tags="e2e" ./...`
+Run unit:
+ - `go test  ./...`
+
 ### Run Actions Locally
  - `brew install act`
  - `act` or on M1 (`--container-architecture linux/amd64`)

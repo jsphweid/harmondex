@@ -18,6 +18,9 @@ import (
 )
 
 func TestMain(m *testing.M) {
+	os.Setenv("MEDIA_PATH", "./test_midis")
+	os.Setenv("INDEX_PATH", "./out")
+
 	// Write code here to run before tests
 	cmd.Index(1)
 	cmd.LoadServeFiles()
