@@ -37,3 +37,7 @@ Initially, any time a note on/off event happened, it triggered a new chord to be
 This created roughly 261,397,621 per 180k files. 43 chunks files about 70MB each.
 
 After the change, we were able to cut out 30% of the chords and chunk files
+
+### Run Actions Locally
+ - `brew install act`
+ - `act` or on M1 (`--container-architecture linux/amd64`)
