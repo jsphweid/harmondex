@@ -36,3 +36,5 @@ file number - number that identifies an original midi file
 Fixing the number of BS chords being created.
 Initially, any time a note on/off event happened, it triggered a new chord to be saved.
 This created roughly 261,397,621 per 180k files. 43 chunks files about 70MB each.
+
+After the change, we were able to cut out 30% of the chords and chunk files
