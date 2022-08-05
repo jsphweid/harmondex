@@ -27,33 +27,31 @@ func CreateChordKey(notes []uint8) string {
 	return res
 }
 
-func getChord(pressed map[uint8]int64) model.Chord {
+func getChord(pressed map[uint8]int64, evt model.ReducedEvent) model.Chord {
 	var notes []uint8
 	var c model.Chord
 	var oldestTime int64 = 9223372036854775807 // max int64
-	var latestTime int64 = 0
-	for note := range pressed {
+	for note, us := range pressed {
 		notes = append(notes, note)
-
-		// storing it in millis for space savings (32 vs. 64)
-		// millis is accurate enough. And if we used microseconds for 32
-		// max offset would be around 1.2 hours... there could reasonably
-		// be midi files that long. Millis gives us 1200 hours max length
-		// which is obviously totally sufficient
-		c.Offset = uint32(pressed[note] / 1000)
-
-		if pressed[note] < oldestTime {
-			oldestTime = pressed[note]
-		}
-		if pressed[note] > latestTime {
-			latestTime = pressed[note]
+		if us < oldestTime {
+			oldestTime = us
 		}
 	}
-	c.Notes = notes
 
-	if latestTime-oldestTime <= 1000000 {
+	c.Notes = notes
+	c.FormedByNoteOn = !evt.IsNoteOff
+
+	// storing it in millis for space savings (32 vs. 64)
+	// millis is accurate enough. And if we used microseconds for 32
+	// max offset would be around 1.2 hours... there could reasonably
+	// be midi files that long. Millis gives us 1200 hours max length
+	// which is obviously totally sufficient
+	c.Offset = uint32(evt.Offset / 1000)
+
+	if evt.Offset-oldestTime <= 1000000 {
 		c.OldestEventWithin1Sec = true
 	}
+
 	return c
 }
 
@@ -64,8 +62,6 @@ func GetChords(s *smf.SMF, hasMetadata bool) ([]model.Chord, error) {
 			fmt.Println(err)
 		}
 	}()
-
-	var chords []model.Chord
 
 	var reducedEvents []model.ReducedEvent
 
@@ -104,28 +100,40 @@ func GetChords(s *smf.SMF, hasMetadata bool) ([]model.Chord, error) {
 		return reducedEvents[i].IsNoteOff
 	})
 
-	timestampToChords := make(map[int64]model.Chord)
 	pressed := make(map[uint8]int64)
+	var chords []model.Chord
 	for _, evt := range reducedEvents {
 		if evt.IsNoteOff {
 			delete(pressed, evt.Note)
-			timestampToChords[evt.Offset] = getChord(pressed)
 		} else {
 			pressed[evt.Note] = evt.Offset
-			chord := getChord(pressed)
-			chord.FormedByNoteOn = true
-			timestampToChords[evt.Offset] = chord
+		}
+
+		// ignore really short or really long chords
+		if len(pressed) >= 2 && len(pressed) <= 16 {
+			chords = append(chords, getChord(pressed, evt))
 		}
 	}
 
-	for k := range timestampToChords {
-		c := timestampToChords[k]
+	var res []model.Chord
+
+	if len(chords) == 0 {
+		return res, nil
+	}
+
+	for i, c := range chords {
 		c.FileHasMetadata = hasMetadata
-		if len(c.Notes) > 0 {
-			chords = append(chords, c)
+
+		// only write chords that have notes and have enough space
+		// between midi events to justify the possibility of a chord
+		if len(c.Notes) > 0 && i > 0 {
+			if c.Offset-chords[i-1].Offset >= constants.NewChordMsThreshold {
+				res = append(res, chords[i-1])
+			}
 		}
 	}
-	return chords, nil
+	res = append(res, chords[len(chords)-1])
+	return res, nil
 }
 
 func serializeChordFlags(flags model.ChordFlag) uint8 {

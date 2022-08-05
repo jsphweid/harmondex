@@ -21,11 +21,6 @@ import (
 func maybePutChordInBuckets(c model.Chord) {
 	// TODO: bucketize other methods? 1. transposed, 2. note classes
 
-	// ignore really short or really long chords
-	if len(c.Notes) < 2 || len(c.Notes) > 16 {
-		return
-	}
-
 	// order them
 	sort.Slice(c.Notes, func(i, j int) bool {
 		return c.Notes[i] < c.Notes[j]
