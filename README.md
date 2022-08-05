@@ -18,7 +18,6 @@ file number - number that identifies an original midi file
 
 
 # TODO
- - [ ] partial chords might be accidentally prioritized (there is no look ahead)
  - [ ] come up with better name
  - [ ] profile everything in indexing and see what can be improved
  - [ ] use map
