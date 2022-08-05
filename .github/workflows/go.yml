@@ -13,6 +13,28 @@ jobs:
     steps:
     - uses: actions/checkout@v3
 
+    - name: Setup DynamoDB Local
+      uses: rrainn/dynamodb-action@v2.0.1
+      with:
+        dbPath: # undefined by default, if this is undefined inMemory will be used
+        sharedDb: # undefined by default
+        delayTransientStatuses: # undefined by default
+        optimizeDbBeforeStartup: # undefined by default
+        port: 8000
+        cors: '*'
+
+    - name: setup table
+      run: |
+        AWS_DEFAULT_REGION=localhost AWS_ACCESS_KEY_ID=abc AWS_SECRET_ACCESS_KEY=abc aws --endpoint-url=http://localhost:8000 dynamodb create-table \
+            --table-name harmondex-metadata \
+            --attribute-definitions \
+                AttributeName=PK,AttributeType=S \
+            --key-schema \
+                AttributeName=PK,KeyType=HASH \
+            --provisioned-throughput \
+                ReadCapacityUnits=5,WriteCapacityUnits=5 \
+            --table-class STANDARD
+
     - name: Set up Go
       uses: actions/setup-go@v3
       with:
@@ -22,4 +44,4 @@ jobs:
       run: go build -v ./...
 
     - name: Test
-      run: go test -v ./...
+      run: AWS_ACCESS_KEY_ID=abc AWS_SECRET_ACCESS_KEY=abc go test -v -tags="e2e" ./...

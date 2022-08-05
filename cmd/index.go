@@ -28,11 +28,11 @@ var indexCmd = &cobra.Command{
 			maxNum = arg1
 		}
 
-		run(maxNum)
+		Index(maxNum)
 	},
 }
 
-func run(maxNum int) {
+func Index(maxNum int) {
 	util.RecreateOutputDir()
 	paths := util.GatherAllMidiPaths(maxNum)
 	fileNumMap := file.CreateFileNumMap(paths)
