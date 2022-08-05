@@ -175,7 +175,7 @@ func getStart(r *http.Request) int {
 	return num
 }
 
-func handleSearch(w http.ResponseWriter, r *http.Request) {
+func HandleSearch(w http.ResponseWriter, r *http.Request) {
 	reqBody, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		fmt.Println(w, "Kindly enter data with the event title and description only in order to update")
@@ -203,12 +203,17 @@ func UnauthorizedHandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, "401 Unauthorized\n")
 }
 
-func serve() {
+func LoadServeFiles() {
+	// NOTE: this should be exposed but I don't immediately know a
+	// better way to make this file easily testable than to do this
 	allChunks = util.ReadBinaryOrPanic[[]model.ChunkOverview](util.GetAllChunksPath())
 	fileNumMap = util.ReadBinaryOrPanic[model.FileNumToMidiPath](util.GetFileNumToNamePath())
+}
 
+func serve() {
+	LoadServeFiles()
 	router := mux.NewRouter()
-	router.HandleFunc("/search", handleSearch).Methods("POST")
+	router.HandleFunc("/search", HandleSearch).Methods("POST")
 	router.HandleFunc("/file/{id}", handleGetFile).Methods("GET")
 
 	c := cors.New(cors.Options{

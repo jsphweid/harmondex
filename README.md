@@ -27,7 +27,7 @@ file number - number that identifies an original midi file
  - [ ] caching?
  - [ ] 30ms just getting results
  - [ ] profile... 300ms response now is not good
- - [ ] write some e2e test?
+ - [ ] why on basic e2e test does it put 3 simple chords in two different buckets?
 
 
 ###
