@@ -58,7 +58,7 @@ func TestBasicCChordE2E(t *testing.T) {
 		panic(err.Error())
 	}
 
-	assert.Equal(searchResponse, model.SearchResponse{
+	assert.Equal(model.SearchResponse{
 		Start:      0,
 		NumMatches: 2,
 		NumFiles:   1,
@@ -67,7 +67,7 @@ func TestBasicCChordE2E(t *testing.T) {
 			Offsets:      []float32{0, 1},
 			MidiMetadata: nil,
 		}},
-	})
+	}, searchResponse)
 }
 
 func TestBasicFChordE2E(t *testing.T) {
@@ -88,7 +88,7 @@ func TestBasicFChordE2E(t *testing.T) {
 		panic(err.Error())
 	}
 
-	assert.Equal(searchResponse, model.SearchResponse{
+	assert.Equal(model.SearchResponse{
 		Start:      0,
 		NumMatches: 1,
 		NumFiles:   1,
@@ -97,5 +97,5 @@ func TestBasicFChordE2E(t *testing.T) {
 			Offsets:      []float32{0.5},
 			MidiMetadata: nil,
 		}},
-	})
+	}, searchResponse)
 }
