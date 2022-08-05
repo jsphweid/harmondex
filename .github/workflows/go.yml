@@ -25,7 +25,7 @@ jobs:
 
     - name: setup table
       run: |
-        AWS_DEFAULT_REGION=localhost aws --endpoint-url=http://localhost:8000 dynamodb create-table \
+        AWS_DEFAULT_REGION=localhost AWS_ACCESS_KEY_ID=abc AWS_SECRET_ACCESS_KEY=abc aws --endpoint-url=http://localhost:8000 dynamodb create-table \
             --table-name harmondex-metadata \
             --attribute-definitions \
                 AttributeName=PK,AttributeType=S \
