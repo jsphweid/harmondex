@@ -25,7 +25,7 @@ jobs:
 
     - name: setup table
       run: |
-        aws dynamodb create-table \
+        aws --endpoint-url=http://localhost:8000 dynamodb create-table \
             --table-name harmondex-metadata \
             --attribute-definitions \
                 AttributeName=PK,AttributeType=S \
