@@ -103,23 +103,35 @@ func GetChords(s *smf.SMF, hasMetadata bool) ([]model.Chord, error) {
 	})
 
 	pressed := make(map[uint8]int64)
+	pressedCount := make(map[uint8]uint32)
 	var res []model.Chord
 	var lastEvent model.ReducedEvent
+	var lastChordKey string
 
 	for i, evt := range reducedEvents {
 		// check if pressed should be added
 		if i > 0 && evt.Offset > lastEvent.Offset+constants.NewChordThreshold {
 			// ignore really short or really long chords
 			if len(pressed) >= 2 && len(pressed) <= 16 {
-				res = append(res, getChord(pressed, lastEvent, hasMetadata))
+				c := getChord(pressed, lastEvent, hasMetadata)
+				key := CreateChordKey(c.Notes)
+				if key != lastChordKey {
+					res = append(res, c)
+				}
+				lastChordKey = key
 			}
 		}
 
 		// maintain pressed state
 		lastEvent = evt
 		if evt.IsNoteOff {
-			delete(pressed, evt.Note)
+			pressedCount[evt.Note] = pressedCount[evt.Note] - 1
+			if pressedCount[evt.Note] <= 0 {
+				delete(pressedCount, evt.Note)
+				delete(pressed, evt.Note)
+			}
 		} else {
+			pressedCount[evt.Note] = pressedCount[evt.Note] + 1
 			pressed[evt.Note] = evt.Offset
 		}
 	}
