@@ -1,7 +1,8 @@
 package model
 
 type ReducedEvent struct {
-	Offset    int64
-	IsNoteOff bool
-	Note      uint8
+	AbsTickOffset int64
+	AbsTimeMicro  int64
+	IsNoteOff     bool
+	Note          uint8
 }

@@ -98,7 +98,7 @@ func TestFlagsSerializeDeserialize(t *testing.T) {
 
 func TestChordSerializeDeserialize(t *testing.T) {
 	chord := model.Chord{
-		Offset:                1,
+		AbsTickOffset:         1,
 		Notes:                 []uint8{1, 2, 3},
 		FileNum:               2,
 		FileHasMetadata:       true,

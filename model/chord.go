@@ -3,7 +3,7 @@ package model
 type Notes = []uint8
 
 type Chord struct {
-	Offset                uint32 // millis
+	AbsTickOffset         uint32
 	Notes                 Notes
 	FileNum               uint32
 	FileHasMetadata       bool

@@ -71,7 +71,7 @@ func makeChunk(m ChordKeyToChords, sortedKeys []string) model.ChunkOverview {
 			chunkIndex[sortedKeys[i-1]] = pp
 		}
 		for _, chord := range chords {
-			binary.Write(dataBuf, binary.LittleEndian, chord.Offset)
+			binary.Write(dataBuf, binary.LittleEndian, chord.AbsTickOffset)
 			binary.Write(dataBuf, binary.LittleEndian, chord.FileNum)
 			dataOffset += 8
 		}
