@@ -82,14 +82,20 @@ func GetChords(s *smf.SMF, hasMetadata bool) ([]model.Chord, error) {
 					IsNoteOff: false,
 					Note:      key,
 				}
-				reducedEvents = append(reducedEvents, rEvent)
+				if channel != 10 {
+					// ignore drum channel messages
+					reducedEvents = append(reducedEvents, rEvent)
+				}
 			case event.Message.GetNoteOff(&channel, &key, &velocity):
 				rEvent := model.ReducedEvent{
 					Offset:    absTime,
 					IsNoteOff: true,
 					Note:      key,
 				}
-				reducedEvents = append(reducedEvents, rEvent)
+				if channel != 10 {
+					// ignore drum channel messages
+					reducedEvents = append(reducedEvents, rEvent)
+				}
 			}
 		}
 	}
