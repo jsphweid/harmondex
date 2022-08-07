@@ -63,9 +63,9 @@ func TestBasicCChordE2E(t *testing.T) {
 		NumMatches: 2,
 		NumFiles:   1,
 		Results: []model.SearchResultV2{{
-			FileId:       1,
-			Offsets:      []float32{0, 1},
-			MidiMetadata: nil,
+			FileId:         1,
+			AbsTickOffsets: []uint32{0, 960},
+			MidiMetadata:   nil,
 		}},
 	}, searchResponse)
 }
@@ -93,9 +93,9 @@ func TestBasicFChordE2E(t *testing.T) {
 		NumMatches: 1,
 		NumFiles:   1,
 		Results: []model.SearchResultV2{{
-			FileId:       1,
-			Offsets:      []float32{0.5},
-			MidiMetadata: nil,
+			FileId:         1,
+			AbsTickOffsets: []uint32{480},
+			MidiMetadata:   nil,
 		}},
 	}, searchResponse)
 }

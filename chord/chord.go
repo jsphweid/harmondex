@@ -31,24 +31,22 @@ func getChord(pressed map[uint8]int64, evt model.ReducedEvent, hasMetadata bool)
 	var notes []uint8
 	var c model.Chord
 	var oldestTime int64 = 9223372036854775807 // max int64
-	for note, us := range pressed {
+	for note, microseconds := range pressed {
 		notes = append(notes, note)
-		if us < oldestTime {
-			oldestTime = us
+		if microseconds < oldestTime {
+			oldestTime = microseconds
 		}
 	}
 
 	c.Notes = notes
 	c.FormedByNoteOn = !evt.IsNoteOff
 
-	// storing it in millis for space savings (32 vs. 64)
-	// millis is accurate enough. And if we used microseconds for 32
-	// max offset would be around 1.2 hours... there could reasonably
-	// be midi files that long. Millis gives us 1200 hours max length
-	// which is obviously totally sufficient
-	c.Offset = uint32(evt.Offset / 1000)
+	if evt.AbsTickOffset >= 4294967295 {
+		panic("Exceeded max tick value of uint32... need to use uint64s probably")
+	}
+	c.AbsTickOffset = uint32(evt.AbsTickOffset)
 
-	if evt.Offset-oldestTime <= 1000000 {
+	if evt.AbsTimeMicro-oldestTime <= 1000000 {
 		c.OldestEventWithin1Sec = true
 	}
 
@@ -71,16 +69,17 @@ func GetChords(s *smf.SMF, hasMetadata bool) ([]model.Chord, error) {
 		var absTicks int64
 		for _, event := range events {
 			absTicks += int64(event.Delta)
-			absTime := s.TimeAt(absTicks)
+			absTimeMicro := s.TimeAt(absTicks)
 			var channel uint8
 			var key uint8
 			var velocity uint8
 			switch {
 			case event.Message.GetNoteOn(&channel, &key, &velocity):
 				rEvent := model.ReducedEvent{
-					Offset:    absTime,
-					IsNoteOff: false,
-					Note:      key,
+					AbsTickOffset: absTicks,
+					AbsTimeMicro:  absTimeMicro,
+					IsNoteOff:     false,
+					Note:          key,
 				}
 				if channel != 10 {
 					// ignore drum channel messages
@@ -88,9 +87,10 @@ func GetChords(s *smf.SMF, hasMetadata bool) ([]model.Chord, error) {
 				}
 			case event.Message.GetNoteOff(&channel, &key, &velocity):
 				rEvent := model.ReducedEvent{
-					Offset:    absTime,
-					IsNoteOff: true,
-					Note:      key,
+					AbsTickOffset: absTicks,
+					AbsTimeMicro:  absTimeMicro,
+					IsNoteOff:     true,
+					Note:          key,
 				}
 				if channel != 10 {
 					// ignore drum channel messages
@@ -102,8 +102,8 @@ func GetChords(s *smf.SMF, hasMetadata bool) ([]model.Chord, error) {
 
 	// prioritize smaller offset values, then note off
 	sort.Slice(reducedEvents, func(i, j int) bool {
-		if reducedEvents[i].Offset != reducedEvents[j].Offset {
-			return reducedEvents[i].Offset < reducedEvents[j].Offset
+		if reducedEvents[i].AbsTimeMicro != reducedEvents[j].AbsTimeMicro {
+			return reducedEvents[i].AbsTimeMicro < reducedEvents[j].AbsTimeMicro
 		}
 		return reducedEvents[i].IsNoteOff
 	})
@@ -116,7 +116,7 @@ func GetChords(s *smf.SMF, hasMetadata bool) ([]model.Chord, error) {
 
 	for i, evt := range reducedEvents {
 		// check if pressed should be added
-		if i > 0 && evt.Offset > lastEvent.Offset+constants.NewChordThreshold {
+		if i > 0 && evt.AbsTimeMicro > lastEvent.AbsTimeMicro+constants.NewChordThreshold {
 			// ignore really short or really long chords
 			if len(pressed) >= 2 && len(pressed) <= 16 {
 				c := getChord(pressed, lastEvent, hasMetadata)
@@ -138,7 +138,7 @@ func GetChords(s *smf.SMF, hasMetadata bool) ([]model.Chord, error) {
 			}
 		} else {
 			pressedCount[evt.Note] = pressedCount[evt.Note] + 1
-			pressed[evt.Note] = evt.Offset
+			pressed[evt.Note] = evt.AbsTickOffset
 		}
 	}
 
@@ -198,7 +198,7 @@ func Serialize(chord model.Chord) []byte {
 	res := make([]byte, constants.ChordSize)
 	cf := createChordFlags(chord)
 	copy(res[0:16], chord.Notes)
-	binary.LittleEndian.PutUint32(res[16:20], chord.Offset)
+	binary.LittleEndian.PutUint32(res[16:20], chord.AbsTickOffset)
 	binary.LittleEndian.PutUint32(res[20:24], chord.FileNum)
 	res[24] = serializeChordFlags(cf)
 	return res
@@ -207,7 +207,7 @@ func Serialize(chord model.Chord) []byte {
 func Deserialize(bytes []byte) model.Chord {
 	var chord model.Chord
 	chord.Notes = util.FilterZeros(bytes[:16])
-	chord.Offset = binary.LittleEndian.Uint32(bytes[16:20])
+	chord.AbsTickOffset = binary.LittleEndian.Uint32(bytes[16:20])
 	chord.FileNum = binary.LittleEndian.Uint32(bytes[20:24])
 
 	cf := deserializeChordFlags(bytes[24])

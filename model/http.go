@@ -1,9 +1,9 @@
 package model
 
 type SearchResultV2 struct {
-	FileId       uint32        `json:"file_id"`
-	Offsets      []float32     `json:"offsets"`
-	MidiMetadata *MidiMetadata `json:"midi_metadata"`
+	FileId         uint32        `json:"file_id"`
+	AbsTickOffsets []uint32      `json:"abs_tick_offsets"`
+	MidiMetadata   *MidiMetadata `json:"midi_metadata"`
 }
 
 type SearchResponse struct {

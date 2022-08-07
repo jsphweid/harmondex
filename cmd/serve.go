@@ -42,7 +42,7 @@ func parseResult(buf []byte) []model.RawResult {
 	var res []model.RawResult
 	for i := 0; i < len(buf); i += 8 {
 		var rr model.RawResult
-		rr.Offset = binary.LittleEndian.Uint32(buf[i : i+4])
+		rr.AbsTickOffset = binary.LittleEndian.Uint32(buf[i : i+4])
 		rr.FileId = binary.LittleEndian.Uint32(buf[i+4 : i+8])
 		res = append(res, rr)
 	}
@@ -124,15 +124,15 @@ func handleGetFile(w http.ResponseWriter, r *http.Request) {
 
 func sendSearchResponse(w http.ResponseWriter, matches []model.RawResult, start int) {
 	var uniqueFileIds []uint32
-	fileIdToOffsets := make(map[uint32][]float32)
+	fileIdToOffsets := make(map[uint32][]uint32)
 
 	for _, match := range matches {
-		offset := float32(match.Offset) / 1000 // convert to seconds because it's clearer
-		if offsets, ok := fileIdToOffsets[match.FileId]; ok {
-			fileIdToOffsets[match.FileId] = append(offsets, offset)
+		absTickOffset := match.AbsTickOffset
+		if absTickOffsets, ok := fileIdToOffsets[match.FileId]; ok {
+			fileIdToOffsets[match.FileId] = append(absTickOffsets, absTickOffset)
 		} else {
 			uniqueFileIds = append(uniqueFileIds, match.FileId)
-			fileIdToOffsets[match.FileId] = []float32{offset}
+			fileIdToOffsets[match.FileId] = []uint32{absTickOffset}
 		}
 	}
 
@@ -152,7 +152,7 @@ func sendSearchResponse(w http.ResponseWriter, matches []model.RawResult, start 
 	for _, id := range ids {
 		var sr model.SearchResultV2
 		sr.FileId = id
-		sr.Offsets = fileIdToOffsets[id]
+		sr.AbsTickOffsets = fileIdToOffsets[id]
 		sr.MidiMetadata = nil
 		if _, ok := fileIdToMetadata[id]; ok {
 			val := fileIdToMetadata[id]
